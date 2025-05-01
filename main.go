@@ -1,9 +1,13 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
+)
+
+var (
+	Version = "dev"
+	Commit  = "none"  //Current commit
+	Build   = "local" //Building time
 )
 
 func main() {
@@ -13,7 +17,14 @@ func main() {
 			"message": "OK",
 		})
 	})
-	fmt.Printf("Backend started at 0.0.0.0:8080")
+	router.GET("/version", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"codeName": "Haru",
+			"version":  Version,
+			"commit":   Commit,
+			"build":    Build,
+		})
+	})
 	router.Run() // 监听并在 0.0.0.0:8080 上启动服务
 
 }
