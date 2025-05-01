@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,6 +26,12 @@ func main() {
 			"build":    Build,
 		})
 	})
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"https://koch2333.cn"}
+	// config.AllowOrigins = []string{"http://google.com", "http://facebook.com"}
+	// config.AllowAllOrigins = true
+
+	router.Use(cors.New(config))
 	router.Run() // 监听并在 0.0.0.0:8080 上启动服务
 
 }
