@@ -25,10 +25,11 @@ func main() {
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{
 		"https://koch2333.cn",
-		"http://localhost:3000",
+		"http://localhost:5173",
 		"http://127.0.0.1:3000",
 	}
 	config.AllowCredentials = true
+	config.AddAllowHeaders("CF-Turnstile-Response")
 	router.Use(cors.New(config))
 
 	// 3) 信息接口（保留你现有的 InfoHandler）
