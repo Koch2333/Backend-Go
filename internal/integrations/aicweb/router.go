@@ -3,12 +3,13 @@ package aicweb
 import (
 	"os"
 
+	"backend-go/internal/integrations/aicweb/envinit"
 	"github.com/gin-gonic/gin"
 )
 
 func Mount(r *gin.RouterGroup) {
 	svc := NewServiceMemory()
-	ts := NewTurnstileFromEnv() // <- 新增：根据环境变量创建校验器
+	ts := NewTurnstileFromEnv()
 	h := NewHandler(svc, ts)
 
 	r.POST("/user/register", h.Register)
@@ -21,6 +22,9 @@ func Mount(r *gin.RouterGroup) {
 }
 
 func Attach(engine *gin.Engine) {
+	// 先初始化/加载 aicweb 目录下的 .env.development
+	envinit.Init()
+
 	base := os.Getenv("AICWEB_BASE_PREFIX")
 	if base == "" {
 		base = "/api/aicweb"

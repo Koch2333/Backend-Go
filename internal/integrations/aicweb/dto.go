@@ -34,14 +34,16 @@ func NewFail(err error, data interface{}) Response {
 
 // —— 登录/注册 DTO ——
 
-type RegisterRequest struct {
-	Username string `json:"username" binding:"required"`
-	Email    string `json:"email" binding:"required"`
+// dto.go
+type LoginRequest struct {
+	Username string `json:"username"`        // 兼容 aicweb：邮箱或用户名都填到这里
+	Email    string `json:"email,omitempty"` // 兼容你现在的前端
 	Password string `json:"password" binding:"required"`
 }
 
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required"`
+type RegisterRequest struct {
+	Username string `json:"username"`        // 兼容 aicweb：邮箱或用户名都填到这里
+	Email    string `json:"email,omitempty"` // 兼容你现在的前端
 	Password string `json:"password" binding:"required"`
 }
 
