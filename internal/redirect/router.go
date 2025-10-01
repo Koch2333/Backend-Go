@@ -15,8 +15,19 @@ func Mount(r *gin.RouterGroup) {
 	r.GET("/pncs/:hwid", h.RedirectNFC)
 }
 
+// 兼容旧用法：固定 /api/redirect
 func Attach(engine *gin.Engine) {
-	envinit.Init() // redirect 专属 envinit
+	envinit.Init()
 	grp := engine.Group("/api/redirect")
+	Mount(grp)
+}
+
+// 新增：可由外部决定前缀
+func AttachTo(engine *gin.Engine, prefix string) {
+	envinit.Init()
+	if prefix == "" {
+		prefix = "/api/redirect"
+	}
+	grp := engine.Group(prefix)
 	Mount(grp)
 }

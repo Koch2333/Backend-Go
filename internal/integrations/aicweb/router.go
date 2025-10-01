@@ -11,7 +11,6 @@ func Mount(r *gin.RouterGroup) {
 	svc := NewServiceMemory()
 	ts := NewTurnstileFromEnv()
 
-	// SQLite 表单服务
 	fs, err := NewFormServiceFromEnv()
 	if err != nil {
 		panic("failed to init sqlite form service: " + err.Error())
@@ -25,21 +24,28 @@ func Mount(r *gin.RouterGroup) {
 	prv := r.Group("", AuthRequired(svc))
 	{
 		prv.GET("/user/profile", h.Profile)
-
-		// 表单接口（受保护）
 		prv.POST("/user/form", h.SubmitForm)
 		prv.GET("/user/form", h.ListMyForms)
 	}
 }
 
+// 兼容旧用法：从环境变量读前缀
 func Attach(engine *gin.Engine) {
-	// 生成并加载 internal/integrations/aicweb/.env.development
 	envinit.Init()
-
 	base := os.Getenv("AICWEB_BASE_PREFIX")
 	if base == "" {
 		base = "/api/aicweb"
 	}
 	grp := engine.Group(base)
+	Mount(grp)
+}
+
+// 新增：可由外部决定前缀
+func AttachTo(engine *gin.Engine, prefix string) {
+	envinit.Init()
+	if prefix == "" {
+		prefix = "/api/aicweb"
+	}
+	grp := engine.Group(prefix)
 	Mount(grp)
 }

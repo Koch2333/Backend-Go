@@ -1,16 +1,18 @@
-// cmd/web/main.go
 package main
 
 import (
 	"log"
 
+	"backend-go/internal/bootstrap/mod"
 	"backend-go/internal/handler"
-	integ "backend-go/internal/integrations/aicweb" // AICWeb 开发版独立 API
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	// 侧效导入模块（触发 init -> 注册）
+	_ "backend-go/internal/integrations/aicweb"
+	_ "backend-go/internal/redirect"
 )
 
-// 这些变量保留在 main 包，因为它们是在编译时被注入的
 var (
 	Version = "dev"
 	Commit  = "none"
@@ -18,39 +20,29 @@ var (
 )
 
 func main() {
-	// 1) 初始化 Gin
 	router := gin.Default()
 
-	// 2) CORS（开发环境常见前端来源：你的域名 + 本地端口）
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{
+	cfg := cors.DefaultConfig()
+	cfg.AllowOrigins = []string{
 		"https://koch2333.cn",
 		"http://localhost:5173",
 		"http://127.0.0.1:3000",
 	}
-	config.AllowCredentials = true
-	config.AddAllowHeaders("CF-Turnstile-Response")
-	router.Use(cors.New(config))
+	cfg.AllowCredentials = true
+	cfg.AddAllowHeaders("CF-Turnstile-Response")
+	router.Use(cors.New(cfg))
 
-	// 3) 信息接口（保留你现有的 InfoHandler）
-	infoHandler := handler.NewInfoHandler(Version, Commit, Build)
-	router.GET("/status", infoHandler.HandleStatus)
-	router.GET("/version", infoHandler.HandleVersion)
+	info := handler.NewInfoHandler(Version, Commit, Build)
+	router.GET("/status", info.HandleStatus)
+	router.GET("/version", info.HandleVersion)
 
-	// 4) AICWeb 开发版独立 API（不依赖 aicweb 源码，默认挂到 /api/aicweb）
-	integ.Attach(router)
+	// ★ 自动挂载所有注册模块
+	mod.MountAll(router)
 
-	// 5) 根路由（简易欢迎页，避免 404；不再做重定向）
 	router.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "Backend-Go is running.",
-			"version": Version,
-			"commit":  Commit,
-			"build":   Build,
-		})
+		c.JSON(200, gin.H{"message": "Backend-Go is running.", "version": Version, "commit": Commit, "build": Build})
 	})
 
-	// 6) 启动
 	port := ":8080"
 	log.Printf("服务器启动于 %s", port)
 	if err := router.Run(port); err != nil {
