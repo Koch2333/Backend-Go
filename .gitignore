@@ -21,6 +21,12 @@
 go.work
 go.work.sum
 
-# env file
+# env and sqlite file
 .env
 .env.*
+config/aicweb/local.env
+config/redirect/local.env
+databases/*.db
+databases/*/*.db
+
+

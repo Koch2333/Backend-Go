@@ -10,7 +10,14 @@ import (
 func Mount(r *gin.RouterGroup) {
 	svc := NewServiceMemory()
 	ts := NewTurnstileFromEnv()
-	h := NewHandler(svc, ts)
+
+	// SQLite 表单服务
+	fs, err := NewFormServiceFromEnv()
+	if err != nil {
+		panic("failed to init sqlite form service: " + err.Error())
+	}
+
+	h := NewHandler(svc, ts, fs)
 
 	r.POST("/user/register", h.Register)
 	r.POST("/user/login", h.Login)
@@ -18,11 +25,15 @@ func Mount(r *gin.RouterGroup) {
 	prv := r.Group("", AuthRequired(svc))
 	{
 		prv.GET("/user/profile", h.Profile)
+
+		// 表单接口（受保护）
+		prv.POST("/user/form", h.SubmitForm)
+		prv.GET("/user/form", h.ListMyForms)
 	}
 }
 
 func Attach(engine *gin.Engine) {
-	// 先初始化/加载 aicweb 目录下的 .env.development
+	// 生成并加载 internal/integrations/aicweb/.env.development
 	envinit.Init()
 
 	base := os.Getenv("AICWEB_BASE_PREFIX")
