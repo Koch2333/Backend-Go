@@ -6,8 +6,10 @@ And powered by Gin.
 
 ## Feature
 
-- I'm currently integrating some of the backend functionality of Atom IT Club.
-  (Thanks to @Chemio9 for his great contribution to our club)
+-  Atom IT Club's some basic backend functions.  (Thanks to [@Chemio9](https://github.com/chemio9) for his great contribution to our club. Without your inspiration and help, I wouldn't be able to complete this work.)
+- Redirect
+- Email
+- Avatar provider
 
 ## Usage
 
@@ -26,3 +28,8 @@ And, run it directly, the Go module will be download automatically.
 ```bash
 go run .
 ```
+
+## To do
+- Divide the function module to specific repositories.
+- Connect backend and frontend.
+- API Documents.
