@@ -8,6 +8,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
+	_ "backend-go/internal/avatar"
 	// 侧效导入模块（触发 init -> 注册）
 	_ "backend-go/internal/integrations/aicweb"
 	_ "backend-go/internal/redirect"
