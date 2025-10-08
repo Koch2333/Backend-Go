@@ -1,6 +1,7 @@
 package aicweb
 
 import (
+	"backend-go/internal/integrations/msconsent"
 	"os"
 
 	em "backend-go/internal/email"
@@ -66,4 +67,5 @@ func AttachTo(engine *gin.Engine, prefix string) {
 	}
 	grp := engine.Group(prefix)
 	Mount(grp)
+	msconsent.Attach(engine)
 }

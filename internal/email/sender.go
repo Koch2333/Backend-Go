@@ -13,14 +13,36 @@ type Sender interface {
 	Name() string
 }
 
-// NewSenderFromEnv 根据 EMAIL_STRATEGY 选择策略：smtp | log | none
+// NewSenderFromEnv
+// 支持的策略：graph | smtp | log | none
+// 行为：
+//   - graph：若 Graph 环境变量不完整/newGraphSenderFromEnv() 返回 nil，则自动回退到 SMTP（若可用），否则 none
+//   - smtp ：若 SMTP 环境变量不完整，则返回 none
+//   - log  ：开发态仅打印
+//   - none ：禁用邮件
+//
+// NewSenderFromEnv
+// 支持：graph | smtp | log | none
 func NewSenderFromEnv() Sender {
 	strategy := strings.ToLower(strings.TrimSpace(os.Getenv("EMAIL_STRATEGY")))
 	switch strategy {
+	case "graph":
+		if s := newGraphSenderFromEnv(); s != nil {
+			return s
+		}
+		if s := newSMTPSenderFromEnv(); s.Name() != "none" { // Graph 配置不全回退 SMTP
+			return s
+		}
+		return noneSender{}
+
 	case "smtp":
 		return newSMTPSenderFromEnv()
+
 	case "log":
 		return logSender{}
+
+	case "none", "":
+		fallthrough
 	default:
 		return noneSender{}
 	}

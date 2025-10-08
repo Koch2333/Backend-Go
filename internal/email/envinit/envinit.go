@@ -20,9 +20,14 @@ func defaultEnv() []byte {
 	return []byte(
 		"# Auto-generated on " + now + "\n" +
 			"# Email module config\n\n" +
-			// 策略：smtp | log | none
-			"EMAIL_STRATEGY=smtp\n" +
-			"\n# SMTP settings\n" +
+			"# 策略：smtp | log | none | graph\n" +
+			"EMAIL_STRATEGY=smtp\n\n" +
+			"# ---- Graph (when EMAIL_STRATEGY=graph) ----\n" +
+			"GRAPH_TENANT_ID=\n" +
+			"GRAPH_CLIENT_ID=\n" +
+			"GRAPH_CLIENT_SECRET=\n" +
+			"GRAPH_FROM_UPN=no-reply@example.com\n\n" +
+			"# ---- SMTP (when EMAIL_STRATEGY=smtp) ----\n" +
 			"SMTP_HOST=smtp.example.com\n" +
 			"SMTP_PORT=587\n" +
 			"SMTP_USERNAME=no-reply@example.com\n" +
