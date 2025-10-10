@@ -14,8 +14,7 @@ import (
 var (
 	httpTimeout = 8 * time.Second
 	cacheTTL    = 5 * time.Minute
-
-	memCache = NewTTLCache[*RatingResult](cacheTTL)
+	memCache    = NewTTLCache[*RatingResult](cacheTTL)
 )
 
 func handleDXRating(c *gin.Context) {
@@ -34,22 +33,13 @@ func handleDXRating(c *gin.Context) {
 
 	p, err := GetProvider(game)
 	if err != nil || user == "" {
-		// 未知游戏/无 user：给 0 值徽章（仍优先上游）
-		if svg := RenderUsagiDXBadgeExactUpstream(0); svg != "" {
-			write(svg, false)
-			return
-		}
-		write(RenderUsagiDXBadge(0), false)
+		write(RenderDXRatingSVG(0), false)
 		return
 	}
 
 	key := hashKey("dx", game, user)
 	if v, ok := memCache.Get(key); ok && v != nil {
-		if svg := RenderUsagiDXBadgeExactUpstream(v.Rating); svg != "" {
-			write(svg, true)
-			return
-		}
-		write(RenderUsagiDXBadge(v.Rating), true)
+		write(RenderDXRatingSVG(v.Rating), true)
 		return
 	}
 
@@ -57,20 +47,12 @@ func handleDXRating(c *gin.Context) {
 	defer cancel()
 	res, err := p.FetchRating(ctx, UserID{Username: user})
 	if err != nil || res == nil {
-		if svg := RenderUsagiDXBadgeExactUpstream(0); svg != "" {
-			write(svg, true)
-			return
-		}
-		write(RenderUsagiDXBadge(0), true)
+		write(RenderDXRatingSVG(0), true)
 		return
 	}
 
 	memCache.Set(key, res)
-	if svg := RenderUsagiDXBadgeExactUpstream(res.Rating); svg != "" {
-		write(svg, true)
-		return
-	}
-	write(RenderUsagiDXBadge(res.Rating), true)
+	write(RenderDXRatingSVG(res.Rating), true)
 }
 
 func hashKey(parts ...string) string {

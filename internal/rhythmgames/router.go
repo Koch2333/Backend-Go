@@ -3,6 +3,7 @@ package rhythmgames
 import "github.com/gin-gonic/gin"
 
 func Mount(r *gin.RouterGroup) {
+	// DX Rating SVG
 	r.GET("/:game/dxrating.svg", handleDXRating)
 }
 
