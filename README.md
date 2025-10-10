@@ -6,9 +6,9 @@ And powered by Gin.
 
 ## Feature
 
--  Atom IT Club's some basic backend functions.  (Thanks to [@Chemio9](https://github.com/chemio9) for his great contribution to our club. Without your inspiration and help, I wouldn't be able to complete this work.)
-- Redirect
-- Email
+- Atom IT Club's some basic backend functions.  (Thanks to [@Chemio9](https://github.com/chemio9) for his great contribution to our club. Without your inspiration and help, I wouldn't be able to complete this work.)
+- Redirect Service
+- Email Sender (Support SMTP and Microsoft Exchange)
 - Avatar provider
 
 ## Usage
@@ -23,10 +23,15 @@ Firstly, clone it into your device.
 git clone https://github.com/Koch2333/Backend-Go.git
 ```
 
+Before running, please run the following command to scan and mount the module.
+```bash
+go generate ./internal/bootstrap/mod
+```
+
 And, run it directly, the Go module will be download automatically.
 
 ```bash
-go run .
+go build backend-go
 ```
 
 ## To do
