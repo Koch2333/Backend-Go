@@ -29,4 +29,7 @@ config/redirect/local.env
 databases/*.db
 databases/*/*.db
 
+# Temporary files of auto imports
+autogen_imports.go
+
 
