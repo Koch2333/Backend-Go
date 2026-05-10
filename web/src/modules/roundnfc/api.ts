@@ -1,19 +1,89 @@
 import type { ListResult } from '@/shell/types'
+import type { RegBeginOptions, LoginBeginOptions } from '@/shell/webauthn'
 import { ROUNDNFC } from './core'
 import type { AutographRequest, Badge, PhotoRequest, RequestStatus } from './types'
 
 const M = ROUNDNFC
 
 export interface LoginResult {
-  token: string
-  expiresAt: string
-  username: string
+  token?: string
+  expiresAt?: string
+  username?: string
+  needsTOTP?: boolean
 }
 
-export async function login(username: string, password: string) {
-  const resp = await M.http().post('/admin/login', { username, password })
+export async function login(username: string, password: string, totpCode?: string) {
+  const resp = await M.http().post('/admin/login', {
+    username,
+    password,
+    totpCode: totpCode ?? '',
+  })
   return M.unwrap<LoginResult>(resp)
 }
+
+export interface PasskeyInfo {
+  id: string
+  name: string
+  createdAt: string
+}
+
+// ----- TOTP -----
+
+export async function getTOTPStatus() {
+  const resp = await M.http().get('/admin/totp/status')
+  return M.unwrap<{ enabled: boolean }>(resp)
+}
+
+export async function setupTOTP() {
+  const resp = await M.http().post('/admin/totp/setup')
+  return M.unwrap<{ uri: string; secret: string }>(resp)
+}
+
+export async function enableTOTP(code: string) {
+  const resp = await M.http().post('/admin/totp/enable', { code })
+  return M.unwrap<{ ok: boolean }>(resp)
+}
+
+export async function disableTOTP() {
+  await M.http().delete('/admin/totp')
+}
+
+// ----- Passkeys -----
+
+export async function beginPasskeyRegister() {
+  const resp = await M.http().post('/admin/webauthn/register/begin')
+  return M.unwrap<RegBeginOptions>(resp)
+}
+
+export async function finishPasskeyRegister(sessionId: string, name: string, credential: object) {
+  const resp = await M.http().post('/admin/webauthn/register/finish', {
+    sessionId,
+    name,
+    credential,
+  })
+  return M.unwrap<{ ok: boolean; id: string }>(resp)
+}
+
+export async function listPasskeys() {
+  const resp = await M.http().get('/admin/webauthn/credentials')
+  return M.unwrap<{ items: PasskeyInfo[] }>(resp)
+}
+
+export async function deletePasskey(id: string) {
+  await M.http().delete(`/admin/webauthn/credentials/${encodeURIComponent(id)}`)
+}
+
+export async function beginPasskeyLogin(username: string) {
+  const resp = await M.http().post('/admin/webauthn/login/begin', { username })
+  return M.unwrap<LoginBeginOptions>(resp)
+}
+
+export async function finishPasskeyLogin(sessionId: string, credential: object) {
+  const resp = await M.http().post('/admin/webauthn/login/finish', { sessionId, credential })
+  return M.unwrap<LoginResult>(resp)
+}
+
+// ----- Badges -----
 
 export async function listBadges(params: { q?: string; limit?: number; offset?: number } = {}) {
   const resp = await M.http().get('/admin/badges', { params })
