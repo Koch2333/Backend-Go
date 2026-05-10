@@ -2,6 +2,7 @@ package roundnfc
 
 import (
 	"backend-go/internal/auth"
+	"backend-go/internal/authflow"
 	"backend-go/internal/roundnfc/envinit"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +21,7 @@ func AttachTo(engine *gin.Engine, prefix string) error {
 
 	pub := newPublicHandler(svc, prefix)
 	adm := newAdminHandler(svc)
+	flow := authflow.New(svc.AuthFlowConfig())
 
 	g := engine.Group(prefix)
 
@@ -30,12 +32,12 @@ func AttachTo(engine *gin.Engine, prefix string) error {
 	g.POST("/uploads", pub.UploadAttachment)
 	g.GET("/objects/:token", pub.GetObject)
 
-	// admin
+	// admin — flow handles /login, /me, /totp/*, /webauthn/*
 	admin := g.Group("/admin")
-	admin.POST("/login", adm.Login)
+	flow.Mount(admin)
 
+	// badge + request management (require valid JWT)
 	authed := admin.Group("", auth.Required(svc.cfg.JWTSecret))
-	authed.GET("/me", adm.Me)
 	authed.GET("/badges", adm.ListBadges)
 	authed.POST("/badges", adm.UpsertBadge)
 	authed.GET("/badges/:id", adm.GetBadge)

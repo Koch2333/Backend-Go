@@ -4,9 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
-
-	"backend-go/internal/auth"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,45 +11,6 @@ import (
 type adminHandler struct{ svc *Service }
 
 func newAdminHandler(svc *Service) *adminHandler { return &adminHandler{svc: svc} }
-
-type loginPayload struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-func (h *adminHandler) Login(c *gin.Context) {
-	if !h.svc.rl.Allow("login:" + c.ClientIP()) {
-		respondError(c, http.StatusTooManyRequests, "too many attempts")
-		return
-	}
-	var p loginPayload
-	if err := c.ShouldBindJSON(&p); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid body")
-		return
-	}
-	if h.svc.cfg.AdminPasswordHash == "" || len(h.svc.cfg.JWTSecret) < 16 {
-		respondError(c, http.StatusServiceUnavailable, "admin not configured")
-		return
-	}
-	if p.Username != h.svc.cfg.AdminUsername || !auth.VerifyPassword(h.svc.cfg.AdminPasswordHash, p.Password) {
-		respondError(c, http.StatusUnauthorized, "invalid credentials")
-		return
-	}
-	tok, exp, err := auth.IssueToken(h.svc.cfg.JWTSecret, p.Username, h.svc.cfg.JWTTTL)
-	if err != nil {
-		respondError(c, http.StatusInternalServerError, "issue token failed")
-		return
-	}
-	respondData(c, gin.H{
-		"token":     tok,
-		"expiresAt": exp.Format(time.RFC3339),
-		"username":  p.Username,
-	})
-}
-
-func (h *adminHandler) Me(c *gin.Context) {
-	respondData(c, gin.H{"username": c.GetString(auth.ContextKeySubject)})
-}
 
 type badgeUpsertPayload struct {
 	ID          string `json:"id"`

@@ -35,7 +35,15 @@ func defaultEnv() []byte {
 			"ROUNDNFC_ADMIN_USERNAME=admin\n" +
 			"ROUNDNFC_ADMIN_PASSWORD_HASH=\n" +
 			"ROUNDNFC_JWT_SECRET=" + randHex(32) + "\n" +
-			"ROUNDNFC_JWT_TTL_HOURS=12\n",
+			"ROUNDNFC_JWT_TTL_HOURS=12\n\n" +
+			"# TOTP (Google Authenticator)\n" +
+			"ROUNDNFC_TOTP_ISSUER=RoundNFC\n\n" +
+			"# WebAuthn / Passkey\n" +
+			"# 生产环境请设置为实际域名，如 admin.example.com\n" +
+			"ROUNDNFC_WEBAUTHN_RPID=localhost\n" +
+			"ROUNDNFC_WEBAUTHN_RP_NAME=RoundNFC Admin\n" +
+			"# 多个 origin 用逗号分隔\n" +
+			"ROUNDNFC_WEBAUTHN_ORIGINS=http://localhost:5174\n",
 	)
 }
 

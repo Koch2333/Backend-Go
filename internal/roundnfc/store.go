@@ -84,8 +84,10 @@ CREATE TABLE IF NOT EXISTS autograph_requests (
 );
 CREATE INDEX IF NOT EXISTS idx_auto_badge_status ON autograph_requests(badge_id, status, updated_at);
 `
-	_, err := s.db.Exec(ddl)
-	return err
+	if _, err := s.db.Exec(ddl); err != nil {
+		return err
+	}
+	return s.migrateAuth()
 }
 
 // ----- Badges -----

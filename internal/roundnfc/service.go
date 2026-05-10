@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"backend-go/internal/authflow"
 	"backend-go/internal/risk"
 	"backend-go/pkg/objstore"
 
@@ -38,6 +39,10 @@ type Config struct {
 	AdminPasswordHash string
 	JWTSecret         []byte
 	JWTTTL            time.Duration
+	TOTPIssuer        string
+	WebAuthnRPID      string
+	WebAuthnRPName    string
+	WebAuthnOrigins   []string
 }
 
 func ConfigFromEnv() Config {
@@ -55,6 +60,10 @@ func ConfigFromEnv() Config {
 		}
 		return def
 	}
+	origins := strings.Split(getStr("ROUNDNFC_WEBAUTHN_ORIGINS", "http://localhost:5174"), ",")
+	for i, o := range origins {
+		origins[i] = strings.TrimSpace(o)
+	}
 	return Config{
 		DBPath:            getStr("ROUNDNFC_SQLITE_PATH", "databases/roundnfc/roundnfc.db"),
 		ObjectDir:         getStr("ROUNDNFC_OBJECT_DIR", "storage/roundnfc/objects"),
@@ -67,6 +76,10 @@ func ConfigFromEnv() Config {
 		AdminPasswordHash: os.Getenv("ROUNDNFC_ADMIN_PASSWORD_HASH"),
 		JWTSecret:         []byte(os.Getenv("ROUNDNFC_JWT_SECRET")),
 		JWTTTL:            time.Duration(atoiOr("ROUNDNFC_JWT_TTL_HOURS", 12)) * time.Hour,
+		TOTPIssuer:        getStr("ROUNDNFC_TOTP_ISSUER", "RoundNFC"),
+		WebAuthnRPID:      getStr("ROUNDNFC_WEBAUTHN_RPID", "localhost"),
+		WebAuthnRPName:    getStr("ROUNDNFC_WEBAUTHN_RP_NAME", "RoundNFC Admin"),
+		WebAuthnOrigins:   origins,
 	}
 }
 
@@ -99,6 +112,21 @@ func NewServiceFromEnv() (*Service, error) {
 }
 
 func (s *Service) Close() error { return s.store.Close() }
+
+// AuthFlowConfig returns the authflow.Config for this service.
+func (s *Service) AuthFlowConfig() authflow.Config {
+	return authflow.Config{
+		Store:             s.store,
+		AdminUsername:     s.cfg.AdminUsername,
+		AdminPasswordHash: s.cfg.AdminPasswordHash,
+		JWTSecret:         s.cfg.JWTSecret,
+		JWTTTL:            s.cfg.JWTTTL,
+		TOTPIssuer:        s.cfg.TOTPIssuer,
+		WebAuthnRPID:      s.cfg.WebAuthnRPID,
+		WebAuthnRPName:    s.cfg.WebAuthnRPName,
+		WebAuthnOrigins:   s.cfg.WebAuthnOrigins,
+	}
+}
 
 // allowedImageMIME 仅允许常见位图格式。
 var allowedImageMIME = map[string]string{
