@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"backend-go/internal/adminui"
 	"backend-go/internal/bootstrap/mod"
 	"backend-go/internal/handler"
 
@@ -18,6 +19,7 @@ type Config struct {
 	CORSOrigins  []string // 允许的跨域源
 	AllowCreds   bool     // 是否允许携带凭据
 	AllowHeaders []string // 允许的自定义头
+	AdminPrefix  string   // 后台 SPA 挂载路径（默认 /admin）
 }
 
 func loadConfig() Config {
@@ -34,9 +36,9 @@ func loadConfig() Config {
 			}
 		}
 	} else {
-		// 默认常见本地/示例域名
 		origins = []string{
 			"http://localhost:5173",
+			"http://localhost:5174",
 			"http://localhost:3000",
 			"http://127.0.0.1:3000",
 			"https://koch2333.cn",
@@ -56,18 +58,22 @@ func loadConfig() Config {
 			}
 		}
 	}
+	adminPrefix := strings.TrimSpace(os.Getenv("ADMIN_UI_PREFIX"))
+	if adminPrefix == "" {
+		adminPrefix = "/admin"
+	}
 	return Config{
 		Addr:         addr,
 		CORSOrigins:  origins,
 		AllowCreds:   allowCreds,
 		AllowHeaders: allowHeaders,
+		AdminPrefix:  adminPrefix,
 	}
 }
 
 func Run(version, commit, build string) {
 	cfg := loadConfig()
 
-	// Gin 模式：默认为 debug；生产可设 GIN_MODE=release
 	if m := strings.TrimSpace(os.Getenv("GIN_MODE")); m != "" {
 		gin.SetMode(m)
 	}
@@ -75,26 +81,25 @@ func Run(version, commit, build string) {
 	engine := gin.New()
 	engine.Use(gin.Logger(), gin.Recovery())
 
-	// CORS
 	c := cors.DefaultConfig()
 	c.AllowOrigins = cfg.CORSOrigins
 	c.AllowCredentials = cfg.AllowCreds
 	for _, h := range cfg.AllowHeaders {
 		c.AddAllowHeaders(h)
 	}
-	// 预检缓存
 	c.MaxAge = 12 * time.Hour
 	engine.Use(cors.New(c))
 
-	// 健康与版本
 	info := handler.NewInfoHandler(version, commit, build)
 	engine.GET("/status", info.HandleStatus)
 	engine.GET("/version", info.HandleVersion)
 
-	// ★ 自动挂载所有模块（依赖 autogen_imports.go 中的空导入触发各模块 init() 注册）
+	// 自动挂载所有已注册模块（依赖 internal/bootstrap/mod/autogen_imports.go）
 	mod.MountAll(engine)
 
-	// 根路由
+	// 内嵌后台 SPA（web/）。未构建时静默不挂。
+	adminui.Mount(engine, cfg.AdminPrefix)
+
 	engine.GET("/", func(ctx *gin.Context) {
 		ctx.JSON(200, gin.H{
 			"message": "Backend-Go is running.",
@@ -104,7 +109,7 @@ func Run(version, commit, build string) {
 		})
 	})
 
-	log.Printf("服务器启动于 %s", cfg.Addr)
+	log.Printf("服务器启动于 %s (admin=%s)", cfg.Addr, cfg.AdminPrefix)
 	if err := engine.Run(cfg.Addr); err != nil {
 		log.Fatalf("服务器启动失败: %v", err)
 	}
