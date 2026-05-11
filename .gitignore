@@ -31,7 +31,7 @@ databases/*.db
 databases/*/*.db
 
 # Object storage (RoundNFC 本地驱动)
-storage/
+/storage/
 
 # Temporary files of auto imports
 autogen_imports.go
