@@ -78,7 +78,7 @@ onMounted(load)
           <div class="space-y-1">
             <div class="flex items-center gap-2">
               <span class="font-medium text-gray-900">{{ r.name }}</span>
-              <van-tag size="small" :type="tagType(r.status)">{{ tagText(r.status) }}</van-tag>
+              <van-tag size="medium" :type="tagType(r.status)">{{ tagText(r.status) }}</van-tag>
             </div>
             <div class="text-xs text-gray-500">{{ r.contact }}　·　{{ r.badgeId }}</div>
             <div v-if="r.message" class="text-xs leading-relaxed text-gray-700">{{ r.message }}</div>
