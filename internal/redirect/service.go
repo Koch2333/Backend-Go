@@ -3,13 +3,28 @@ package redirect
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
+	"backend-go/internal/authflow"
 	"backend-go/internal/redirect/storage"
 )
 
+type AdminConfig struct {
+	Username     string
+	PasswordHash string
+	JWTSecret    []byte
+	JWTTTL       time.Duration
+	TOTPIssuer   string
+	WARPID       string
+	WARPName     string
+	WAOrigins    []string
+}
+
 type Service struct {
 	Store *storage.SQLite
+	Admin AdminConfig
 }
 
 func NewServiceFromEnv() (*Service, error) {
@@ -25,7 +40,63 @@ func NewServiceFromEnv() (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Service{Store: st}, nil
+	return &Service{Store: st, Admin: loadAdminConfig()}, nil
+}
+
+func loadAdminConfig() AdminConfig {
+	ttl := 12 * time.Hour
+	if v := strings.TrimSpace(os.Getenv("REDIRECT_JWT_TTL_HOURS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			ttl = time.Duration(n) * time.Hour
+		}
+	}
+	var origins []string
+	for _, o := range strings.Split(os.Getenv("REDIRECT_WEBAUTHN_ORIGINS"), ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			origins = append(origins, o)
+		}
+	}
+	username := strings.TrimSpace(os.Getenv("REDIRECT_ADMIN_USERNAME"))
+	if username == "" {
+		username = "admin"
+	}
+	issuer := strings.TrimSpace(os.Getenv("REDIRECT_TOTP_ISSUER"))
+	if issuer == "" {
+		issuer = "Redirect"
+	}
+	rpName := strings.TrimSpace(os.Getenv("REDIRECT_WEBAUTHN_RP_NAME"))
+	if rpName == "" {
+		rpName = "Redirect Admin"
+	}
+	rpID := strings.TrimSpace(os.Getenv("REDIRECT_WEBAUTHN_RPID"))
+	if rpID == "" {
+		rpID = "localhost"
+	}
+	return AdminConfig{
+		Username:     username,
+		PasswordHash: strings.TrimSpace(os.Getenv("REDIRECT_ADMIN_PASSWORD_HASH")),
+		JWTSecret:    []byte(strings.TrimSpace(os.Getenv("REDIRECT_JWT_SECRET"))),
+		JWTTTL:       ttl,
+		TOTPIssuer:   issuer,
+		WARPID:       rpID,
+		WARPName:     rpName,
+		WAOrigins:    origins,
+	}
+}
+
+// AuthFlowConfig returns the authflow.Config for this service.
+func (s *Service) AuthFlowConfig() authflow.Config {
+	return authflow.Config{
+		Store:             s.Store,
+		AdminUsername:     s.Admin.Username,
+		AdminPasswordHash: s.Admin.PasswordHash,
+		JWTSecret:         s.Admin.JWTSecret,
+		JWTTTL:            s.Admin.JWTTTL,
+		TOTPIssuer:        s.Admin.TOTPIssuer,
+		WebAuthnRPID:      s.Admin.WARPID,
+		WebAuthnRPName:    s.Admin.WARPName,
+		WebAuthnOrigins:   s.Admin.WAOrigins,
+	}
 }
 
 func (s *Service) Close() error { return s.Store.Close() }
