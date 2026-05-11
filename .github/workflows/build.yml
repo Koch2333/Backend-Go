@@ -30,7 +30,7 @@ jobs:
           node-version: 22
 
       - name: Install web deps
-          working-directory: web
+        working-directory: web
         run: pnpm install --no-frozen-lockfile
 
       - name: Build web SPA
