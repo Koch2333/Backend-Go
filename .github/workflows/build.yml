@@ -30,7 +30,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install web deps
         working-directory: web
@@ -46,7 +46,7 @@ jobs:
           name: web-dist
           path: internal/adminui/dist
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
   build:
     name: Build ${{ matrix.os }}/${{ matrix.arch }}
