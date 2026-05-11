@@ -9,7 +9,7 @@ const items = ref<NFCCard[]>([])
 const total = ref(0)
 const q = ref('')
 const loading = ref(false)
-const showEdit = ref(false)
+const editDialog = ref<HTMLDialogElement & { show: () => void; close: () => void } | null>(null)
 const editing = reactive<{ hwid: string; userId: string; isRegistered: boolean; isNew: boolean }>({
   hwid: '',
   userId: '',
@@ -36,7 +36,7 @@ function openCreate() {
   editing.userId = ''
   editing.isRegistered = false
   editing.isNew = true
-  showEdit.value = true
+  editDialog.value?.show()
 }
 
 function openEdit(c: NFCCard) {
@@ -44,7 +44,7 @@ function openEdit(c: NFCCard) {
   editing.userId = c.userId
   editing.isRegistered = c.isRegistered
   editing.isNew = false
-  showEdit.value = true
+  editDialog.value?.show()
 }
 
 async function onSave() {
@@ -61,7 +61,7 @@ async function onSave() {
       isRegistered: editing.isRegistered,
     })
     showSuccessToast('已保存')
-    showEdit.value = false
+    editDialog.value?.close()
     await load()
   } catch (err) {
     showFailToast(extractMessage(err, '保存失败'))
@@ -89,72 +89,109 @@ onMounted(load)
 </script>
 
 <template>
-  <div>
+  <div class="space-y-3 p-2">
     <div class="flex items-center gap-2">
-      <van-search
-        v-model="q"
-        class="!flex-1 !p-0"
-        placeholder="按 hwid / userId 搜索"
-        shape="round"
-        @search="load"
-      />
-      <van-button type="primary" size="small" @click="openCreate">新建</van-button>
+      <md-outlined-text-field
+        label="搜索 hwid / userId"
+        :value="q"
+        @input="(e: any) => (q = e.target.value)"
+        @keyup.enter="load"
+        class="flex-1"
+      >
+        <md-icon slot="leading-icon">search</md-icon>
+      </md-outlined-text-field>
+      <md-filled-button @click="openCreate">
+        <md-icon slot="icon">add</md-icon>
+        新建
+      </md-filled-button>
     </div>
 
-    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">加载中…</div>
-    <div v-else-if="items.length === 0" class="py-8 text-center text-sm text-gray-400">
+    <div
+      v-if="loading"
+      class="py-8 text-center text-sm text-gray-400"
+    >
+      <md-circular-progress indeterminate aria-label="加载中" />
+    </div>
+    <div
+      v-else-if="items.length === 0"
+      class="py-8 text-center text-sm text-gray-400"
+    >
       还没有 NFC 卡片
     </div>
 
-    <van-cell-group v-else inset class="mt-3">
-      <van-cell
-        v-for="c in items"
-        :key="c.hwid"
-        :title="c.hwid"
-        :label="c.userId ? `userId: ${c.userId}` : '未绑定'"
-      >
-        <template #value>
-          <div class="flex items-center justify-end gap-2">
-            <van-tag :type="c.isRegistered ? 'success' : 'warning'" size="medium">
-              {{ c.isRegistered ? '已注册' : '未注册' }}
-            </van-tag>
-            <van-button size="mini" plain @click="openEdit(c)">编辑</van-button>
-            <van-button size="mini" type="danger" plain @click="onDelete(c)">删除</van-button>
+    <md-list v-else class="rounded-2xl bg-white">
+      <template v-for="(c, i) in items" :key="c.hwid">
+        <md-divider v-if="i > 0" />
+        <md-list-item>
+          <div slot="headline">{{ c.hwid }}</div>
+          <div slot="supporting-text">
+            {{ c.userId ? `userId: ${c.userId}` : '未绑定' }}
           </div>
-        </template>
-      </van-cell>
-    </van-cell-group>
+          <div slot="end" class="flex items-center gap-1">
+            <md-assist-chip
+              :label="c.isRegistered ? '已注册' : '未注册'"
+              :class="c.isRegistered ? 'chip-success' : 'chip-warning'"
+            />
+            <md-icon-button @click="openEdit(c)" aria-label="编辑">
+              <md-icon>edit</md-icon>
+            </md-icon-button>
+            <md-icon-button @click="onDelete(c)" aria-label="删除">
+              <md-icon>delete</md-icon>
+            </md-icon-button>
+          </div>
+        </md-list-item>
+      </template>
+    </md-list>
 
-    <p class="pt-3 text-center text-xs text-gray-400">共 {{ total }} 条</p>
+    <p class="pt-1 text-center text-xs text-gray-400">共 {{ total }} 条</p>
 
-    <van-dialog
-      v-model:show="showEdit"
-      :title="editing.isNew ? '新建 NFC 卡片' : '编辑 NFC 卡片'"
-      :show-confirm-button="false"
-      :close-on-click-overlay="!saving"
-    >
-      <div class="p-4 space-y-3">
-        <van-field
-          v-model="editing.hwid"
+    <md-dialog ref="editDialog">
+      <div slot="headline">{{ editing.isNew ? '新建 NFC 卡片' : '编辑 NFC 卡片' }}</div>
+      <form slot="content" id="card-form" method="dialog" class="space-y-3 pt-2">
+        <md-outlined-text-field
           label="hwid"
-          placeholder="NFC 硬件 ID"
+          :value="editing.hwid"
           :readonly="!editing.isNew"
+          @input="(e: any) => (editing.hwid = e.target.value)"
+          class="w-full"
         />
-        <van-field v-model="editing.userId" label="userId" placeholder="可选，绑定的用户 ID" />
-        <van-cell title="已注册">
-          <template #right-icon>
-            <van-switch v-model="editing.isRegistered" size="20" />
-          </template>
-        </van-cell>
-        <div class="flex gap-2">
-          <van-button class="flex-1" round :disabled="saving" @click="showEdit = false">
-            取消
-          </van-button>
-          <van-button class="flex-1" round type="primary" :loading="saving" @click="onSave">
-            保存
-          </van-button>
-        </div>
+        <md-outlined-text-field
+          label="userId（可选）"
+          :value="editing.userId"
+          @input="(e: any) => (editing.userId = e.target.value)"
+          class="w-full"
+        />
+        <label class="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
+          <span class="text-sm">已注册</span>
+          <md-switch
+            :selected="editing.isRegistered"
+            @change="(e: any) => (editing.isRegistered = e.target.selected)"
+          />
+        </label>
+      </form>
+      <div slot="actions">
+        <md-text-button :disabled="saving" @click="editDialog?.close()">取消</md-text-button>
+        <md-filled-button :disabled="saving" @click="onSave">
+          {{ saving ? '保存中…' : '保存' }}
+        </md-filled-button>
       </div>
-    </van-dialog>
+    </md-dialog>
   </div>
 </template>
+
+<style scoped>
+md-outlined-text-field {
+  width: 100%;
+}
+md-list {
+  --md-list-container-color: #fff;
+}
+.chip-success {
+  --md-assist-chip-label-text-color: #146c43;
+  --md-assist-chip-outline-color: #146c43;
+}
+.chip-warning {
+  --md-assist-chip-label-text-color: #92642a;
+  --md-assist-chip-outline-color: #92642a;
+}
+</style>

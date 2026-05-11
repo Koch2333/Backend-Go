@@ -9,7 +9,7 @@ const items = ref<RedirectRule[]>([])
 const total = ref(0)
 const q = ref('')
 const loading = ref(false)
-const showEdit = ref(false)
+const editDialog = ref<HTMLDialogElement & { show: () => void; close: () => void } | null>(null)
 const editing = reactive<{ name: string; targetUrl: string; enabled: boolean; isNew: boolean }>({
   name: '',
   targetUrl: '',
@@ -36,7 +36,7 @@ function openCreate() {
   editing.targetUrl = ''
   editing.enabled = true
   editing.isNew = true
-  showEdit.value = true
+  editDialog.value?.show()
 }
 
 function openEdit(r: RedirectRule) {
@@ -44,7 +44,7 @@ function openEdit(r: RedirectRule) {
   editing.targetUrl = r.targetUrl
   editing.enabled = r.enabled
   editing.isNew = false
-  showEdit.value = true
+  editDialog.value?.show()
 }
 
 async function onSave() {
@@ -62,7 +62,7 @@ async function onSave() {
   try {
     await upsertRule({ name, targetUrl, enabled: editing.enabled })
     showSuccessToast('已保存')
-    showEdit.value = false
+    editDialog.value?.close()
     await load()
   } catch (err) {
     showFailToast(extractMessage(err, '保存失败'))
@@ -86,10 +86,10 @@ async function onDelete(r: RedirectRule) {
   }
 }
 
-async function onToggle(r: RedirectRule) {
+async function onToggle(r: RedirectRule, on: boolean) {
   try {
-    await upsertRule({ name: r.name, targetUrl: r.targetUrl, enabled: !r.enabled })
-    r.enabled = !r.enabled
+    await upsertRule({ name: r.name, targetUrl: r.targetUrl, enabled: on })
+    r.enabled = on
   } catch (err) {
     showFailToast(extractMessage(err, '切换失败'))
   }
@@ -99,69 +99,100 @@ onMounted(load)
 </script>
 
 <template>
-  <div>
+  <div class="space-y-3 p-2">
+    <!-- search + new -->
     <div class="flex items-center gap-2">
-      <van-search
-        v-model="q"
-        class="!flex-1 !p-0"
-        placeholder="按 name / URL 搜索"
-        shape="round"
-        @search="load"
-      />
-      <van-button type="primary" size="small" @click="openCreate">新建</van-button>
+      <md-outlined-text-field
+        label="搜索 name / URL"
+        :value="q"
+        @input="(e: any) => (q = e.target.value)"
+        @keyup.enter="load"
+        class="flex-1"
+      >
+        <md-icon slot="leading-icon">search</md-icon>
+      </md-outlined-text-field>
+      <md-filled-button @click="openCreate">
+        <md-icon slot="icon">add</md-icon>
+        新建
+      </md-filled-button>
     </div>
 
-    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">加载中…</div>
-    <div v-else-if="items.length === 0" class="py-8 text-center text-sm text-gray-400">
+    <div
+      v-if="loading"
+      class="py-8 text-center text-sm text-gray-400"
+    >
+      <md-circular-progress indeterminate aria-label="加载中" />
+    </div>
+    <div
+      v-else-if="items.length === 0"
+      class="py-8 text-center text-sm text-gray-400"
+    >
       还没有短链规则
     </div>
 
-    <van-cell-group v-else inset class="mt-3">
-      <van-cell v-for="r in items" :key="r.name" :title="r.name" :label="r.targetUrl">
-        <template #value>
-          <div class="flex items-center justify-end gap-2">
-            <van-switch :model-value="r.enabled" size="18" @update:model-value="onToggle(r)" />
-            <van-button size="mini" plain @click="openEdit(r)">编辑</van-button>
-            <van-button size="mini" type="danger" plain @click="onDelete(r)">删除</van-button>
+    <md-list v-else class="rounded-2xl bg-white">
+      <template v-for="(r, i) in items" :key="r.name">
+        <md-divider v-if="i > 0" />
+        <md-list-item>
+          <div slot="headline">{{ r.name }}</div>
+          <div slot="supporting-text" class="truncate">{{ r.targetUrl }}</div>
+          <div slot="end" class="flex items-center gap-1">
+            <md-switch
+              :selected="r.enabled"
+              @change="(e: any) => onToggle(r, e.target.selected)"
+            />
+            <md-icon-button @click="openEdit(r)" aria-label="编辑">
+              <md-icon>edit</md-icon>
+            </md-icon-button>
+            <md-icon-button @click="onDelete(r)" aria-label="删除">
+              <md-icon>delete</md-icon>
+            </md-icon-button>
           </div>
-        </template>
-      </van-cell>
-    </van-cell-group>
+        </md-list-item>
+      </template>
+    </md-list>
 
-    <p class="pt-3 text-center text-xs text-gray-400">共 {{ total }} 条</p>
+    <p class="pt-1 text-center text-xs text-gray-400">共 {{ total }} 条</p>
 
-    <van-dialog
-      v-model:show="showEdit"
-      :title="editing.isNew ? '新建规则' : '编辑规则'"
-      :show-confirm-button="false"
-      :close-on-click-overlay="!saving"
-    >
-      <div class="p-4 space-y-3">
-        <van-field
-          v-model="editing.name"
+    <md-dialog ref="editDialog">
+      <div slot="headline">{{ editing.isNew ? '新建规则' : '编辑规则' }}</div>
+      <form slot="content" id="rule-form" method="dialog" class="space-y-3 pt-2">
+        <md-outlined-text-field
           label="name"
-          placeholder="短链 name，例如 home"
+          :value="editing.name"
           :readonly="!editing.isNew"
+          @input="(e: any) => (editing.name = e.target.value)"
+          class="w-full"
         />
-        <van-field
-          v-model="editing.targetUrl"
+        <md-outlined-text-field
           label="跳转 URL"
-          placeholder="https://example.com/{name}"
+          :value="editing.targetUrl"
+          @input="(e: any) => (editing.targetUrl = e.target.value)"
+          class="w-full"
         />
-        <van-cell title="启用">
-          <template #right-icon>
-            <van-switch v-model="editing.enabled" size="20" />
-          </template>
-        </van-cell>
-        <div class="flex gap-2">
-          <van-button class="flex-1" round :disabled="saving" @click="showEdit = false">
-            取消
-          </van-button>
-          <van-button class="flex-1" round type="primary" :loading="saving" @click="onSave">
-            保存
-          </van-button>
-        </div>
+        <label class="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
+          <span class="text-sm">启用</span>
+          <md-switch
+            :selected="editing.enabled"
+            @change="(e: any) => (editing.enabled = e.target.selected)"
+          />
+        </label>
+      </form>
+      <div slot="actions">
+        <md-text-button :disabled="saving" @click="editDialog?.close()">取消</md-text-button>
+        <md-filled-button :disabled="saving" @click="onSave">
+          {{ saving ? '保存中…' : '保存' }}
+        </md-filled-button>
       </div>
-    </van-dialog>
+    </md-dialog>
   </div>
 </template>
+
+<style scoped>
+md-outlined-text-field {
+  width: 100%;
+}
+md-list {
+  --md-list-container-color: #fff;
+}
+</style>

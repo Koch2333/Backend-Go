@@ -9,7 +9,12 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
   base: '/admin/',
   plugins: [
-    vue(),
+    vue({
+      template: {
+        // <md-*> are @material/web custom elements; Vue compiler must leave them alone.
+        compilerOptions: { isCustomElement: (tag) => tag.startsWith('md-') },
+      },
+    }),
     Components({
       resolvers: [VantResolver()],
       dts: 'src/components.d.ts',
