@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import Components from 'unplugin-vue-components/vite'
-import { VantResolver } from 'unplugin-vue-components/resolvers'
 import { fileURLToPath, URL } from 'node:url'
 
 // 输出产物到 internal/adminui/dist/，供 Go 在服务启动时通过 embed.FS 直接内嵌到二进制。
@@ -16,7 +15,6 @@ export default defineConfig({
       },
     }),
     Components({
-      resolvers: [VantResolver()],
       dts: 'src/components.d.ts',
     }),
   ],

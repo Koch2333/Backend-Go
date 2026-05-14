@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { showConfirmDialog, showFailToast, showSuccessToast } from 'vant'
+import { showFailToast, showSuccessToast } from '@/shell/toast'
+import { showConfirmDialog } from '@/shell/confirm'
 import { extractMessage } from '@/shell/http'
 import { deleteRule, listRules, upsertRule } from '../api'
 import type { RedirectRule } from '../types'

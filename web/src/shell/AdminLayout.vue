@@ -13,6 +13,26 @@ const activeModule = computed(() => {
   return m ? MODULES.find((x) => x.name === m) : null
 })
 
+// Map legacy Vant icon names to Material Symbols.
+const ICON_MAP: Record<string, string> = {
+  'link-o': 'link',
+  link: 'link',
+  'credit-pay': 'credit_card',
+  'shield-o': 'shield',
+  'medal-o': 'workspace_premium',
+  'photo-o': 'photo',
+  edit: 'edit',
+  'user-o': 'person',
+  'setting-o': 'settings',
+  description: 'description',
+  'description-o': 'description',
+  'delete-o': 'delete',
+}
+function mdIcon(name?: string): string {
+  if (!name) return ''
+  return ICON_MAP[name] ?? name
+}
+
 function logoutCurrent() {
   if (!activeModule.value) return
   try {
@@ -49,7 +69,7 @@ function logoutCurrent() {
             class="flex items-center gap-2 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
             active-class="bg-brand-50 text-brand-700"
           >
-            <van-icon v-if="n.icon" :name="n.icon" />
+            <md-icon v-if="n.icon" class="nav-icon">{{ mdIcon(n.icon) }}</md-icon>
             <span>{{ n.label }}</span>
           </router-link>
         </div>
@@ -62,9 +82,9 @@ function logoutCurrent() {
           <span v-if="activeModule" class="font-medium text-gray-800">{{ activeModule.title }}</span>
           <span v-else class="font-medium text-gray-800">总览</span>
         </div>
-        <van-button v-if="activeModule" size="small" plain @click="logoutCurrent">
+        <md-outlined-button v-if="activeModule" @click="logoutCurrent">
           退出 {{ activeModule.title }}
-        </van-button>
+        </md-outlined-button>
       </header>
       <main class="flex-1 overflow-y-auto px-6 py-5">
         <router-view />
@@ -72,3 +92,10 @@ function logoutCurrent() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.nav-icon {
+  --md-icon-size: 18px;
+  font-size: 18px;
+}
+</style>

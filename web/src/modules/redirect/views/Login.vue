@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showFailToast, showSuccessToast } from 'vant'
+import { showFailToast, showSuccessToast } from '@/shell/toast'
 import { extractMessage } from '@/shell/http'
 import { getCredential } from '@/shell/webauthn'
 import { login, beginPasskeyLogin, finishPasskeyLogin } from '../api'

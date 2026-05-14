@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showFailToast, showSuccessToast } from 'vant'
+import { showFailToast, showSuccessToast } from '@/shell/toast'
 import { extractMessage } from '@/shell/http'
 import { getCredential } from '@/shell/webauthn'
 import { login, beginPasskeyLogin, finishPasskeyLogin } from '../api'
@@ -52,62 +52,85 @@ async function loginWithPasskey() {
 </script>
 
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-gray-100 px-6">
-    <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow">
-      <h1 class="text-center text-base font-semibold text-gray-800">RoundNFC 后台</h1>
-      <p class="mt-1 text-center text-xs text-gray-400">
+  <main class="flex min-h-screen items-center justify-center bg-surface-container px-6">
+    <form
+      class="m3-card w-full max-w-sm rounded-3xl p-6 shadow"
+      @submit.prevent="onSubmit"
+    >
+      <h1 class="m3-title text-center text-base font-medium text-on-surface">RoundNFC 后台</h1>
+      <p class="mt-1 text-center text-xs text-on-surface-variant">
         账号在后端 config/roundnfc/.env 里配置
       </p>
-      <van-form class="mt-4" @submit="onSubmit">
-        <van-cell-group inset>
-          <van-field
-            v-model="form.username"
-            label="用户名"
-            placeholder="admin"
-            :rules="[{ required: true, message: '请输入用户名' }]"
-            required
-          />
-          <van-field
-            v-model="form.password"
-            type="password"
-            label="密码"
-            placeholder="对应 PASSWORD_HASH 的明文"
-            :rules="[{ required: true, message: '请输入密码' }]"
-            required
-          />
-          <van-field
-            v-if="showTOTP"
-            v-model="form.totpCode"
-            type="digit"
-            label="动态验证码"
-            placeholder="6 位 TOTP 验证码"
-            maxlength="6"
-            :rules="[{ required: true, message: '请输入验证码' }]"
-            required
-          />
-        </van-cell-group>
-        <div class="px-4 pt-4 space-y-3">
-          <van-button
-            block
-            round
-            type="primary"
-            native-type="submit"
-            :loading="submitting"
-          >
-            {{ showTOTP ? '验证登录' : '登录' }}
-          </van-button>
-          <van-button
-            block
-            round
-            plain
-            type="primary"
-            :loading="passkeyWorking"
-            @click.prevent="loginWithPasskey"
-          >
-            使用 Passkey 登录
-          </van-button>
-        </div>
-      </van-form>
-    </div>
+
+      <div class="mt-6 space-y-4">
+        <md-outlined-text-field
+          label="用户名"
+          :value="form.username"
+          @input="(e: any) => (form.username = e.target.value)"
+          required
+          class="w-full"
+        />
+        <md-outlined-text-field
+          label="密码"
+          type="password"
+          :value="form.password"
+          @input="(e: any) => (form.password = e.target.value)"
+          required
+          class="w-full"
+        />
+        <md-outlined-text-field
+          v-if="showTOTP"
+          label="动态验证码"
+          type="number"
+          maxlength="6"
+          :value="form.totpCode"
+          @input="(e: any) => (form.totpCode = e.target.value)"
+          required
+          class="w-full"
+        />
+      </div>
+
+      <div class="mt-6 space-y-3">
+        <md-filled-button
+          type="submit"
+          :disabled="submitting"
+          class="w-full"
+        >
+          {{ submitting ? '登录中…' : showTOTP ? '验证登录' : '登录' }}
+        </md-filled-button>
+        <md-outlined-button
+          type="button"
+          :disabled="passkeyWorking"
+          class="w-full"
+          @click="loginWithPasskey"
+        >
+          <md-icon slot="icon">fingerprint</md-icon>
+          {{ passkeyWorking ? '请在系统弹窗中确认…' : '使用 Passkey 登录' }}
+        </md-outlined-button>
+      </div>
+    </form>
   </main>
 </template>
+
+<style scoped>
+.bg-surface-container {
+  background: #eef0f3;
+}
+.m3-card {
+  background: #fff;
+}
+.m3-title {
+  font-family: Roboto, system-ui, sans-serif;
+}
+.text-on-surface {
+  color: #1a1c1e;
+}
+.text-on-surface-variant {
+  color: #44474e;
+}
+md-outlined-text-field,
+md-filled-button,
+md-outlined-button {
+  width: 100%;
+}
+</style>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { showConfirmDialog, showFailToast } from 'vant'
+import { showFailToast } from '@/shell/toast'
+import { showConfirmDialog } from '@/shell/confirm'
 import { extractMessage } from '@/shell/http'
 import { deleteBadge, listBadges } from '../api'
 import type { Badge } from '../types'
@@ -43,44 +44,57 @@ onMounted(load)
 </script>
 
 <template>
-  <div>
+  <div class="space-y-3 p-2">
     <div class="flex items-center gap-2">
-      <van-search
-        v-model="q"
-        class="!flex-1 !p-0"
-        placeholder="按 id / 标题 / 系列搜索"
-        shape="round"
-        @search="load"
-      />
-      <van-button type="primary" size="small" @click="router.push('/m/roundnfc/badges/new')">
+      <md-outlined-text-field
+        label="按 id / 标题 / 系列搜索"
+        :value="q"
+        @input="(e: any) => (q = e.target.value)"
+        @keyup.enter="load"
+        class="flex-1"
+      >
+        <md-icon slot="leading-icon">search</md-icon>
+      </md-outlined-text-field>
+      <md-filled-button @click="router.push('/m/roundnfc/badges/new')">
+        <md-icon slot="icon">add</md-icon>
         新建
-      </van-button>
+      </md-filled-button>
     </div>
 
-    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">加载中…</div>
+    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">
+      <md-circular-progress indeterminate aria-label="加载中" />
+    </div>
     <div v-else-if="items.length === 0" class="py-8 text-center text-sm text-gray-400">
       还没有徽章
     </div>
 
-    <van-cell-group v-else inset class="mt-3">
-      <van-cell
-        v-for="b in items"
-        :key="b.id"
-        :title="b.title || '(未命名)'"
-        :label="`${b.id}　·　${b.series || '—'}`"
-        is-link
-        @click="router.push(`/m/roundnfc/badges/${encodeURIComponent(b.id)}`)"
-      >
-        <template #right-icon>
-          <van-icon
-            name="delete-o"
-            class="ml-2 text-base text-red-400"
-            @click.stop="onDelete(b)"
-          />
-        </template>
-      </van-cell>
-    </van-cell-group>
+    <md-list v-else class="m3-card rounded-2xl bg-white">
+      <template v-for="(b, i) in items" :key="b.id">
+        <md-divider v-if="i > 0" />
+        <md-list-item
+          type="button"
+          @click="router.push(`/m/roundnfc/badges/${encodeURIComponent(b.id)}`)"
+        >
+          <div slot="headline">{{ b.title || '(未命名)' }}</div>
+          <div slot="supporting-text">{{ b.id }}　·　{{ b.series || '—' }}</div>
+          <div slot="end">
+            <md-icon-button aria-label="删除" @click.stop="onDelete(b)">
+              <md-icon>delete</md-icon>
+            </md-icon-button>
+          </div>
+        </md-list-item>
+      </template>
+    </md-list>
 
-    <p class="pt-3 text-center text-xs text-gray-400">共 {{ total }} 条</p>
+    <p class="pt-1 text-center text-xs text-gray-400">共 {{ total }} 条</p>
   </div>
 </template>
+
+<style scoped>
+md-outlined-text-field {
+  width: 100%;
+}
+md-list {
+  --md-list-container-color: #fff;
+}
+</style>

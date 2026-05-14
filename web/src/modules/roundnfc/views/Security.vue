@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { showSuccessToast, showFailToast } from 'vant'
+import { showSuccessToast, showFailToast } from '@/shell/toast'
 import { toDataURL } from 'qrcode'
 import { extractMessage } from '@/shell/http'
 import { createCredential } from '@/shell/webauthn'
@@ -16,7 +16,6 @@ import {
   type PasskeyInfo,
 } from '../api'
 
-// ----- TOTP -----
 const totpEnabled = ref(false)
 const totpSetup = ref<{ uri: string; secret: string } | null>(null)
 const totpQR = ref('')
@@ -27,7 +26,9 @@ onMounted(async () => {
   try {
     const s = await getTOTPStatus()
     totpEnabled.value = s.enabled
-  } catch {}
+  } catch {
+    /* */
+  }
   await loadPasskeys()
 })
 
@@ -75,17 +76,18 @@ async function handleDisableTOTP() {
   }
 }
 
-// ----- Passkeys -----
 const passkeys = ref<PasskeyInfo[]>([])
 const passkeyWorking = ref(false)
-const showAddDialog = ref(false)
+const addDialog = ref<HTMLDialogElement & { show: () => void; close: () => void } | null>(null)
 const newKeyName = ref('')
 
 async function loadPasskeys() {
   try {
     const r = await listPasskeys()
     passkeys.value = r.items ?? []
-  } catch {}
+  } catch {
+    /* */
+  }
 }
 
 async function addPasskey() {
@@ -96,7 +98,7 @@ async function addPasskey() {
     const begin = await beginPasskeyRegister()
     const credential = await createCredential(begin)
     await finishPasskeyRegister(begin.sessionId, name, credential)
-    showAddDialog.value = false
+    addDialog.value?.close()
     newKeyName.value = ''
     showSuccessToast('Passkey 已添加')
     await loadPasskeys()
@@ -126,133 +128,120 @@ function fmtDate(s: string) {
 </script>
 
 <template>
-  <div class="mx-auto max-w-xl space-y-6 p-4">
-    <!-- TOTP -->
-    <van-cell-group inset>
-      <van-cell
-        title="动态验证码 (TOTP)"
-        :value="totpEnabled ? '已启用 ✅' : '未启用'"
-        :value-class="totpEnabled ? 'text-green-600' : 'text-gray-400'"
-      />
+  <div class="mx-auto max-w-xl space-y-4 p-3">
+    <section class="m3-card rounded-3xl bg-white p-4">
+      <header class="flex items-center justify-between pb-2">
+        <h2 class="text-base font-medium">动态验证码 (TOTP)</h2>
+        <md-assist-chip
+          :label="totpEnabled ? '已启用' : '未启用'"
+          :class="totpEnabled ? 'chip-success' : 'chip-muted'"
+        />
+      </header>
 
-      <!-- not enabled, no pending setup -->
-      <template v-if="!totpEnabled && !totpSetup">
-        <div class="px-4 pb-4">
-          <van-button block round type="primary" :loading="totpWorking" @click="startTOTPSetup">
-            开始设置
-          </van-button>
-        </div>
-      </template>
+      <div v-if="!totpEnabled && !totpSetup">
+        <md-filled-button :disabled="totpWorking" class="w-full" @click="startTOTPSetup">
+          开始设置
+        </md-filled-button>
+      </div>
 
-      <!-- setup in progress -->
-      <template v-if="totpSetup">
-        <div class="px-4 py-3 space-y-3">
-          <p class="text-sm text-gray-600">
-            用 Google Authenticator、Authy 或其他 TOTP 应用扫描二维码
-          </p>
-          <div class="flex justify-center">
-            <img
-              v-if="totpQR"
-              :src="totpQR"
-              alt="TOTP QR"
-              class="w-48 h-48 rounded border border-gray-200"
-            />
-          </div>
-          <p class="text-xs text-gray-500">
-            或手动输入密锁：
-            <code class="bg-gray-100 px-1 rounded break-all select-all">{{ totpSetup.secret }}</code>
-          </p>
-          <van-field
-            v-model="totpCode"
-            type="digit"
-            label="验证码"
-            placeholder="输入 6 位验证码确认"
-            maxlength="6"
+      <div v-if="totpSetup" class="space-y-3">
+        <p class="text-sm text-gray-600">
+          用 Google Authenticator、Authy 或其他 TOTP 应用扫描二维码
+        </p>
+        <div class="flex justify-center">
+          <img
+            v-if="totpQR"
+            :src="totpQR"
+            alt="TOTP QR"
+            class="h-48 w-48 rounded-xl border border-gray-200"
           />
-          <div class="flex gap-2">
-            <van-button class="flex-1" round plain @click="totpSetup = null">取消</van-button>
-            <van-button
-              class="flex-1"
-              round
-              type="primary"
-              :loading="totpWorking"
-              @click="confirmTOTPEnable"
-            >
-              验证并启用
-            </van-button>
-          </div>
         </div>
-      </template>
-
-      <!-- enabled -->
-      <template v-if="totpEnabled">
-        <div class="px-4 pb-4">
-          <van-button block round type="danger" :loading="totpWorking" @click="handleDisableTOTP">
-            关闭 TOTP
-          </van-button>
-        </div>
-      </template>
-    </van-cell-group>
-
-    <!-- Passkeys -->
-    <van-cell-group inset>
-      <van-cell title="Passkey / 安全密鑰">
-        <template #right-icon>
-          <van-button size="small" type="primary" @click="showAddDialog = true">
-            + 添加
-          </van-button>
-        </template>
-      </van-cell>
-
-      <van-cell v-if="passkeys.length === 0" title="尚未添加 Passkey" class="text-gray-400" />
-
-      <van-swipe-cell v-for="pk in passkeys" :key="pk.id">
-        <van-cell :title="pk.name" :label="'添加于 ' + fmtDate(pk.createdAt)" />
-        <template #right>
-          <van-button
-            square
-            type="danger"
-            text="删除"
-            :loading="passkeyWorking"
-            @click="handleDeletePasskey(pk.id)"
-          />
-        </template>
-      </van-swipe-cell>
-    </van-cell-group>
-
-    <!-- Add Passkey Dialog -->
-    <van-dialog
-      v-model:show="showAddDialog"
-      title="添加 Passkey"
-      :show-confirm-button="false"
-      :close-on-click-overlay="!passkeyWorking"
-    >
-      <div class="p-4 space-y-3">
-        <van-field
-          v-model="newKeyName"
-          label="名称"
-          placeholder="如：iPhone Face ID、YubiKey"
+        <p class="text-xs text-gray-500">
+          或手动输入密锁：
+          <code class="select-all break-all rounded bg-gray-100 px-1">{{ totpSetup.secret }}</code>
+        </p>
+        <md-outlined-text-field
+          label="6 位验证码"
+          type="number"
+          maxlength="6"
+          :value="totpCode"
+          @input="(e: any) => (totpCode = e.target.value)"
+          class="w-full"
         />
         <div class="flex gap-2">
-          <van-button
-            class="flex-1"
-            round
-            :disabled="passkeyWorking"
-            @click="showAddDialog = false"
-          >
-            取消
-          </van-button>
-          <van-button
-            class="flex-1"
-            round
-            type="primary"
-            :loading="passkeyWorking"
-            @click="addPasskey"
-          >
-            开始添加
-          </van-button>
+          <md-text-button class="flex-1" @click="totpSetup = null">取消</md-text-button>
+          <md-filled-button class="flex-1" :disabled="totpWorking" @click="confirmTOTPEnable">
+            验证并启用
+          </md-filled-button>
         </div>
       </div>
-    </van-dialog>
+
+      <div v-if="totpEnabled">
+        <md-outlined-button :disabled="totpWorking" class="w-full" @click="handleDisableTOTP">
+          <md-icon slot="icon">lock_open</md-icon>
+          关闭 TOTP
+        </md-outlined-button>
+      </div>
+    </section>
+
+    <section class="m3-card rounded-3xl bg-white p-4">
+      <header class="flex items-center justify-between pb-2">
+        <h2 class="text-base font-medium">Passkey / 安全密钥</h2>
+        <md-filled-button @click="addDialog?.show()">
+          <md-icon slot="icon">add</md-icon>
+          添加
+        </md-filled-button>
+      </header>
+
+      <p v-if="passkeys.length === 0" class="py-4 text-center text-sm text-gray-400">
+        尚未添加 Passkey
+      </p>
+
+      <md-list v-else>
+        <template v-for="(pk, i) in passkeys" :key="pk.id">
+          <md-divider v-if="i > 0" />
+          <md-list-item>
+            <md-icon slot="start">key</md-icon>
+            <div slot="headline">{{ pk.name }}</div>
+            <div slot="supporting-text">添加于 {{ fmtDate(pk.createdAt) }}</div>
+            <md-icon-button slot="end" :disabled="passkeyWorking" aria-label="删除" @click="handleDeletePasskey(pk.id)">
+              <md-icon>delete</md-icon>
+            </md-icon-button>
+          </md-list-item>
+        </template>
+      </md-list>
+    </section>
+
+    <md-dialog ref="addDialog">
+      <div slot="headline">添加 Passkey</div>
+      <form slot="content" id="add-passkey-form" method="dialog" class="pt-2">
+        <md-outlined-text-field
+          label="名称（如 iPhone Face ID、YubiKey）"
+          :value="newKeyName"
+          @input="(e: any) => (newKeyName = e.target.value)"
+          class="w-full"
+        />
+      </form>
+      <div slot="actions">
+        <md-text-button :disabled="passkeyWorking" @click="addDialog?.close()">取消</md-text-button>
+        <md-filled-button :disabled="passkeyWorking" @click="addPasskey">
+          {{ passkeyWorking ? '请在系统弹窗中确认…' : '开始添加' }}
+        </md-filled-button>
+      </div>
+    </md-dialog>
   </div>
 </template>
+
+<style scoped>
+md-outlined-text-field {
+  width: 100%;
+}
+.chip-success {
+  --md-assist-chip-label-text-color: #146c43;
+  --md-assist-chip-outline-color: #146c43;
+}
+.chip-muted {
+  --md-assist-chip-label-text-color: #6b7280;
+  --md-assist-chip-outline-color: #d1d5db;
+}
+</style>

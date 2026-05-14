@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showFailToast, showSuccessToast } from 'vant'
+import { showFailToast, showSuccessToast } from '@/shell/toast'
 import { extractMessage } from '@/shell/http'
 import { createBadge, getBadge, upsertBadge, uploadBadgeImage } from '../api'
 import type { Badge } from '../types'
@@ -86,47 +86,104 @@ onMounted(load)
 </script>
 
 <template>
-  <div>
-    <h2 class="px-1 pb-3 text-base font-semibold text-gray-800">
+  <div class="space-y-3 p-2">
+    <h2 class="px-1 pb-1 text-base font-semibold text-gray-800">
       {{ isNew ? '新建徽章' : `编辑 ${idParam}` }}
     </h2>
 
-    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">加载中…</div>
+    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">
+      <md-circular-progress indeterminate aria-label="加载中" />
+    </div>
 
-    <van-form v-else @submit="onSubmit">
-      <van-cell-group inset>
-        <van-field v-model="form.id" label="ID" placeholder="例如 DEMO001" :readonly="!isNew" required />
-        <van-field v-model="form.title" label="标题" placeholder="徽章标题" required />
-        <van-field v-model="form.series" label="系列" placeholder="所属作品" />
-        <van-field v-model="form.type" label="类型" placeholder="亚克力 / 金属…" />
-        <van-field
-          v-model="form.styleKey"
-          label="样式 Key"
-          placeholder="命中前端内置图，留空走 imageUrl"
-        />
-        <van-field
-          v-model="form.imageUrl"
-          label="图片 Key/URL"
-          placeholder="后端对象 key 或绝对 URL"
-        />
-        <van-field v-model="form.serialNo" label="编号" placeholder="12 / 50" />
-        <van-field v-model="form.releasedAt" label="发放" placeholder="2026 上海 BW" />
-        <van-field v-model="form.description" label="描述" type="textarea" rows="3" autosize />
-      </van-cell-group>
+    <form v-else class="m3-card space-y-4 rounded-3xl bg-white p-4" @submit.prevent="onSubmit">
+      <md-outlined-text-field
+        label="ID"
+        placeholder="例如 DEMO001"
+        :value="form.id"
+        :readonly="!isNew"
+        @input="(e: any) => (form.id = e.target.value)"
+        required
+        class="w-full"
+      />
+      <md-outlined-text-field
+        label="标题"
+        placeholder="徽章标题"
+        :value="form.title"
+        @input="(e: any) => (form.title = e.target.value)"
+        required
+        class="w-full"
+      />
+      <md-outlined-text-field
+        label="系列"
+        placeholder="所属作品"
+        :value="form.series"
+        @input="(e: any) => (form.series = e.target.value)"
+        class="w-full"
+      />
+      <md-outlined-text-field
+        label="类型"
+        placeholder="亚克力 / 金属…"
+        :value="form.type"
+        @input="(e: any) => (form.type = e.target.value)"
+        class="w-full"
+      />
+      <md-outlined-text-field
+        label="样式 Key"
+        placeholder="命中前端内置图，留空走 imageUrl"
+        :value="form.styleKey"
+        @input="(e: any) => (form.styleKey = e.target.value)"
+        class="w-full"
+      />
+      <md-outlined-text-field
+        label="图片 Key/URL"
+        placeholder="后端对象 key 或绝对 URL"
+        :value="form.imageUrl"
+        @input="(e: any) => (form.imageUrl = e.target.value)"
+        class="w-full"
+      />
+      <md-outlined-text-field
+        label="编号"
+        placeholder="12 / 50"
+        :value="form.serialNo"
+        @input="(e: any) => (form.serialNo = e.target.value)"
+        class="w-full"
+      />
+      <md-outlined-text-field
+        label="发放"
+        placeholder="2026 上海 BW"
+        :value="form.releasedAt"
+        @input="(e: any) => (form.releasedAt = e.target.value)"
+        class="w-full"
+      />
+      <md-outlined-text-field
+        label="描述"
+        type="textarea"
+        rows="3"
+        :value="form.description"
+        @input="(e: any) => (form.description = e.target.value)"
+        class="w-full"
+      />
 
-      <div v-if="!isNew" class="mt-3 flex items-center gap-2 px-4">
+      <div v-if="!isNew" class="flex items-center gap-2 pt-1">
         <input ref="fileInput" type="file" accept="image/*" hidden @change="onPickFile" />
-        <van-button size="small" :loading="uploading" @click="fileInput?.click()">
-          上传徽章主图
-        </van-button>
+        <md-outlined-button type="button" :disabled="uploading" @click="fileInput?.click()">
+          <md-icon slot="icon">upload</md-icon>
+          {{ uploading ? '上传中…' : '上传徽章主图' }}
+        </md-outlined-button>
         <span class="text-xs text-gray-400">jpeg/png/webp/gif，最大 8MB</span>
       </div>
 
-      <div class="px-4 pb-4 pt-4">
-        <van-button block round type="primary" native-type="submit" :loading="submitting">
-          保存
-        </van-button>
+      <div class="pt-2">
+        <md-filled-button type="submit" :disabled="submitting" class="w-full">
+          {{ submitting ? '保存中…' : '保存' }}
+        </md-filled-button>
       </div>
-    </van-form>
+    </form>
   </div>
 </template>
+
+<style scoped>
+md-outlined-text-field {
+  width: 100%;
+}
+</style>

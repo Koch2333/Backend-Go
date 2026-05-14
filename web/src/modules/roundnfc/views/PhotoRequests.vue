@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { showFailToast } from 'vant'
+import { showFailToast } from '@/shell/toast'
 import { extractMessage } from '@/shell/http'
 import { listPhotoRequests, setPhotoStatus } from '../api'
 import type { PhotoRequest, RequestStatus } from '../types'
@@ -11,7 +11,7 @@ const status = ref<RequestStatus | ''>('')
 const badgeId = ref('')
 const loading = ref(false)
 
-const statusOptions = [
+const statusOptions: { text: string; value: RequestStatus | '' }[] = [
   { text: '全部', value: '' },
   { text: '待处理', value: 'new' },
   { text: '已处理', value: 'handled' },
@@ -44,8 +44,8 @@ async function update(r: PhotoRequest, next: RequestStatus) {
   }
 }
 
-function tagType(s: RequestStatus) {
-  return s === 'handled' ? 'success' : s === 'rejected' ? 'danger' : 'warning'
+function tagClass(s: RequestStatus) {
+  return s === 'handled' ? 'chip-success' : s === 'rejected' ? 'chip-danger' : 'chip-warning'
 }
 function tagText(s: RequestStatus) {
   return s === 'handled' ? '已处理' : s === 'rejected' ? '已拒绝' : '待处理'
@@ -55,45 +55,84 @@ onMounted(load)
 </script>
 
 <template>
-  <div>
+  <div class="space-y-3 p-2">
     <div class="flex items-center gap-2">
-      <van-field
-        v-model="badgeId"
-        placeholder="按徽章 ID 过滤"
-        class="!flex-1"
-        @blur="load"
+      <md-outlined-text-field
+        label="按徽章 ID 过滤"
+        :value="badgeId"
+        @input="(e: any) => (badgeId = e.target.value)"
         @keyup.enter="load"
+        @blur="load"
+        class="flex-1"
       />
-      <van-dropdown-menu>
-        <van-dropdown-item v-model="status" :options="statusOptions" @change="load" />
-      </van-dropdown-menu>
+      <select
+        v-model="status"
+        class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
+        @change="load"
+      >
+        <option v-for="o in statusOptions" :key="o.value" :value="o.value">{{ o.text }}</option>
+      </select>
     </div>
 
-    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">加载中…</div>
-    <div v-else-if="items.length === 0" class="py-8 text-center text-sm text-gray-400">没有记录</div>
+    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">
+      <md-circular-progress indeterminate aria-label="加载中" />
+    </div>
+    <div v-else-if="items.length === 0" class="py-8 text-center text-sm text-gray-400">
+      没有记录
+    </div>
 
-    <van-cell-group v-else inset class="mt-3">
-      <van-cell v-for="r in items" :key="r.id">
-        <template #title>
-          <div class="space-y-1">
-            <div class="flex items-center gap-2">
-              <span class="font-medium text-gray-900">{{ r.name }}</span>
-              <van-tag size="medium" :type="tagType(r.status)">{{ tagText(r.status) }}</van-tag>
-            </div>
+    <md-list v-else class="m3-card rounded-2xl bg-white">
+      <template v-for="(r, i) in items" :key="r.id">
+        <md-divider v-if="i > 0" />
+        <md-list-item>
+          <div slot="headline" class="flex items-center gap-2">
+            <span class="font-medium text-gray-900">{{ r.name }}</span>
+            <md-assist-chip :label="tagText(r.status)" :class="tagClass(r.status)" />
+          </div>
+          <div slot="supporting-text" class="space-y-1">
             <div class="text-xs text-gray-500">{{ r.contact }}　·　{{ r.badgeId }}</div>
             <div v-if="r.message" class="text-xs leading-relaxed text-gray-700">{{ r.message }}</div>
             <div class="text-[11px] text-gray-300">{{ new Date(r.createdAt).toLocaleString() }}</div>
           </div>
-        </template>
-        <template #right-icon>
-          <div class="ml-3 flex flex-col gap-1">
-            <van-button v-if="r.status !== 'handled'" size="mini" type="success" @click="update(r, 'handled')">已处理</van-button>
-            <van-button v-if="r.status !== 'rejected'" size="mini" type="danger" plain @click="update(r, 'rejected')">拒绝</van-button>
+          <div slot="end" class="ml-3 flex flex-col gap-1">
+            <md-filled-button
+              v-if="r.status !== 'handled'"
+              @click="update(r, 'handled')"
+            >
+              已处理
+            </md-filled-button>
+            <md-outlined-button
+              v-if="r.status !== 'rejected'"
+              @click="update(r, 'rejected')"
+            >
+              拒绝
+            </md-outlined-button>
           </div>
-        </template>
-      </van-cell>
-    </van-cell-group>
+        </md-list-item>
+      </template>
+    </md-list>
 
-    <p class="pt-3 text-center text-xs text-gray-400">共 {{ total }} 条</p>
+    <p class="pt-1 text-center text-xs text-gray-400">共 {{ total }} 条</p>
   </div>
 </template>
+
+<style scoped>
+md-outlined-text-field {
+  width: 100%;
+}
+md-list {
+  --md-list-container-color: #fff;
+}
+.chip-success {
+  --md-assist-chip-label-text-color: #146c43;
+  --md-assist-chip-outline-color: #146c43;
+}
+.chip-warning {
+  --md-assist-chip-label-text-color: #92642a;
+  --md-assist-chip-outline-color: #92642a;
+}
+.chip-danger {
+  --md-assist-chip-label-text-color: #b3261e;
+  --md-assist-chip-outline-color: #b3261e;
+}
+</style>

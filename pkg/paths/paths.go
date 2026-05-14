@@ -75,6 +75,24 @@ func fileExists(p string) bool {
 	return err == nil
 }
 
+// ExecDir returns the directory of the running executable, falling back to
+// the current working directory. Used by module envinit for first-run config
+// release so that running the binary in any folder drops config alongside it.
+func ExecDir() string {
+	if exe, err := os.Executable(); err == nil {
+		if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+			exe = resolved
+		}
+		if d := filepath.Dir(exe); d != "" {
+			return d
+		}
+	}
+	if wd, err := os.Getwd(); err == nil {
+		return wd
+	}
+	return "."
+}
+
 func CallerFileLine(skip int) string {
 	if _, file, line, ok := runtime.Caller(skip + 1); ok {
 		return file + ":" + strconv.Itoa(line)

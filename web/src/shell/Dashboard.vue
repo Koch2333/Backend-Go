@@ -14,7 +14,7 @@ import { MODULES } from './modules'
         v-for="m in MODULES"
         :key="m.name"
         :to="(m.nav && m.nav[0]?.to) || `/m/${m.name}/login`"
-        class="rounded-xl border border-transparent bg-white p-4 shadow-sm transition hover:border-brand-200 hover:shadow"
+        class="m3-card block rounded-3xl bg-white p-4 transition hover:shadow-md"
       >
         <div class="text-base font-semibold text-gray-800">{{ m.title }}</div>
         <div class="text-xs text-gray-400">{{ m.name }}　·　{{ m.apiPrefix }}</div>
@@ -22,8 +22,14 @@ import { MODULES } from './modules'
       </router-link>
     </div>
 
-    <div v-if="MODULES.length === 0" class="mt-8 rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-400">
+    <div v-if="MODULES.length === 0" class="m3-card mt-8 rounded-3xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-400">
       还没有模块。复制 <code>src/modules/_template/</code> 过来是最快的起手方式。
     </div>
   </div>
 </template>
+
+<style scoped>
+.m3-card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+</style>

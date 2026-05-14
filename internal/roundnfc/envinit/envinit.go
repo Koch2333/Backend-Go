@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+
+	"backend-go/pkg/paths"
 )
 
 const (
@@ -54,16 +56,7 @@ func randHex(n int) string {
 }
 
 func Init() {
-	base, err := os.Getwd()
-	if err != nil || base == "" {
-		if exe, e := os.Executable(); e == nil {
-			base = filepath.Dir(exe)
-		}
-	}
-	if base == "" {
-		log.Printf("[roundnfc/envinit] base dir not found; skip init")
-		return
-	}
+	base := paths.ExecDir()
 	cfgDir := filepath.Join(base, dirName)
 	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
 		log.Printf("[roundnfc/envinit] mkdir %s: %v", cfgDir, err)

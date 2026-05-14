@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { showSuccessToast, showFailToast } from 'vant'
+import { showSuccessToast, showFailToast } from '@/shell/toast'
 import { toDataURL } from 'qrcode'
 import { extractMessage } from '@/shell/http'
 import { createCredential } from '@/shell/webauthn'
