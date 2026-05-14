@@ -45,7 +45,7 @@ async function update(r: PhotoRequest, next: RequestStatus) {
 }
 
 function tagClass(s: RequestStatus) {
-  return s === 'handled' ? 'chip-success' : s === 'rejected' ? 'chip-danger' : 'chip-warning'
+  return s === 'handled' ? 'chip-tertiary' : s === 'rejected' ? 'chip-danger' : 'chip-muted'
 }
 function tagText(s: RequestStatus) {
   return s === 'handled' ? '已处理' : s === 'rejected' ? '已拒绝' : '待处理'
@@ -55,84 +55,94 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-3 p-2">
-    <div class="flex items-center gap-2">
-      <md-outlined-text-field
-        label="按徽章 ID 过滤"
-        :value="badgeId"
-        @input="(e: any) => (badgeId = e.target.value)"
-        @keyup.enter="load"
-        @blur="load"
-        class="flex-1"
-      />
-      <select
-        v-model="status"
-        class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
-        @change="load"
-      >
-        <option v-for="o in statusOptions" :key="o.value" :value="o.value">{{ o.text }}</option>
-      </select>
-    </div>
+  <div class="space-y-5">
+    <header class="m3-page-header">
+      <div>
+        <h1 class="m3-headline-medium text-on-surface">返图申请</h1>
+        <p class="m3-body-medium text-on-surface-variant mt-1">共 {{ total }} 条</p>
+      </div>
+      <div class="filter-bar">
+        <md-outlined-text-field
+          label="按徽章 ID 过滤"
+          :value="badgeId"
+          @input="(e: any) => (badgeId = e.target.value)"
+          @keyup.enter="load"
+          @blur="load"
+          class="search-input"
+        />
+        <select v-model="status" class="status-select" @change="load">
+          <option v-for="o in statusOptions" :key="o.value" :value="o.value">{{ o.text }}</option>
+        </select>
+      </div>
+    </header>
 
-    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">
+    <div v-if="loading" class="m3-loading">
       <md-circular-progress indeterminate aria-label="加载中" />
-    </div>
-    <div v-else-if="items.length === 0" class="py-8 text-center text-sm text-gray-400">
-      没有记录
+      <span class="m3-body-medium">加载中…</span>
     </div>
 
-    <md-list v-else class="m3-card rounded-2xl bg-white">
+    <div v-else-if="items.length === 0" class="m3-card m3-empty">
+      <div class="m3-empty-icon"><md-icon>photo_library</md-icon></div>
+      <div class="m3-title-medium text-on-surface">没有记录</div>
+      <div class="m3-body-medium text-on-surface-variant">
+        换个筛选条件再试试，或等待新的申请到达。
+      </div>
+    </div>
+
+    <md-list v-else class="m3-card list-card">
       <template v-for="(r, i) in items" :key="r.id">
         <md-divider v-if="i > 0" />
         <md-list-item>
-          <div slot="headline" class="flex items-center gap-2">
-            <span class="font-medium text-gray-900">{{ r.name }}</span>
+          <div slot="headline" class="row-headline">
+            <span class="m3-title-medium">{{ r.name }}</span>
             <md-assist-chip :label="tagText(r.status)" :class="tagClass(r.status)" />
           </div>
-          <div slot="supporting-text" class="space-y-1">
-            <div class="text-xs text-gray-500">{{ r.contact }}　·　{{ r.badgeId }}</div>
-            <div v-if="r.message" class="text-xs leading-relaxed text-gray-700">{{ r.message }}</div>
-            <div class="text-[11px] text-gray-300">{{ new Date(r.createdAt).toLocaleString() }}</div>
+          <div slot="supporting-text" class="row-supporting">
+            <div class="m3-body-small text-on-surface-variant">
+              {{ r.contact }} · {{ r.badgeId }}
+            </div>
+            <div v-if="r.message" class="m3-body-medium text-on-surface">{{ r.message }}</div>
+            <div class="m3-body-small text-on-surface-variant">
+              {{ new Date(r.createdAt).toLocaleString() }}
+            </div>
           </div>
-          <div slot="end" class="ml-3 flex flex-col gap-1">
-            <md-filled-button
-              v-if="r.status !== 'handled'"
-              @click="update(r, 'handled')"
-            >
+          <div slot="end" class="row-actions">
+            <md-filled-button v-if="r.status !== 'handled'" @click="update(r, 'handled')">
               已处理
             </md-filled-button>
-            <md-outlined-button
-              v-if="r.status !== 'rejected'"
-              @click="update(r, 'rejected')"
-            >
+            <md-outlined-button v-if="r.status !== 'rejected'" @click="update(r, 'rejected')">
               拒绝
             </md-outlined-button>
           </div>
         </md-list-item>
       </template>
     </md-list>
-
-    <p class="pt-1 text-center text-xs text-gray-400">共 {{ total }} 条</p>
   </div>
 </template>
 
 <style scoped>
-md-outlined-text-field {
-  width: 100%;
+.search-input { min-width: 220px; }
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
-md-list {
-  --md-list-container-color: #fff;
+.status-select {
+  border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  padding: 10px 12px;
+  font: inherit;
 }
-.chip-success {
-  --md-assist-chip-label-text-color: #146c43;
-  --md-assist-chip-outline-color: #146c43;
-}
-.chip-warning {
-  --md-assist-chip-label-text-color: #92642a;
-  --md-assist-chip-outline-color: #92642a;
-}
-.chip-danger {
-  --md-assist-chip-label-text-color: #b3261e;
-  --md-assist-chip-outline-color: #b3261e;
+.list-card { padding: 4px 0; }
+.row-headline { display: flex; align-items: center; gap: 8px; }
+.row-supporting { display: flex; flex-direction: column; gap: 4px; padding-top: 2px; }
+.row-actions {
+  margin-left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 </style>
