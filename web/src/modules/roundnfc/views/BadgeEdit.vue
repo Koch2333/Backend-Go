@@ -86,94 +86,82 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-3 p-2">
-    <h2 class="px-1 pb-1 text-base font-semibold text-gray-800">
-      {{ isNew ? '新建徽章' : `编辑 ${idParam}` }}
-    </h2>
+  <div class="space-y-5">
+    <header class="m3-page-header">
+      <div>
+        <h1 class="m3-headline-medium text-on-surface">
+          {{ isNew ? '新建徽章' : `编辑 ${idParam}` }}
+        </h1>
+        <p class="m3-body-medium text-on-surface-variant mt-1">
+          填写徽章信息后保存，再回到列表。
+        </p>
+      </div>
+    </header>
 
-    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">
+    <div v-if="loading" class="m3-loading">
       <md-circular-progress indeterminate aria-label="加载中" />
+      <span class="m3-body-medium">加载中…</span>
     </div>
 
-    <form v-else class="m3-card space-y-4 rounded-3xl bg-white p-4" @submit.prevent="onSubmit">
+    <form v-else class="m3-card edit-card" @submit.prevent="onSubmit">
       <md-outlined-text-field
-        label="ID"
-        placeholder="例如 DEMO001"
-        :value="form.id"
-        :readonly="!isNew"
-        @input="(e: any) => (form.id = e.target.value)"
-        required
-        class="w-full"
+        label="ID" placeholder="例如 DEMO001"
+        :value="form.id" :readonly="!isNew"
+        @input="(e: any) => (form.id = e.target.value)" required
       />
       <md-outlined-text-field
-        label="标题"
-        placeholder="徽章标题"
+        label="标题" placeholder="徽章标题"
         :value="form.title"
-        @input="(e: any) => (form.title = e.target.value)"
-        required
-        class="w-full"
+        @input="(e: any) => (form.title = e.target.value)" required
       />
       <md-outlined-text-field
-        label="系列"
-        placeholder="所属作品"
+        label="系列" placeholder="所属作品"
         :value="form.series"
         @input="(e: any) => (form.series = e.target.value)"
-        class="w-full"
       />
       <md-outlined-text-field
-        label="类型"
-        placeholder="亚克力 / 金属…"
+        label="类型" placeholder="亚克力 / 金属…"
         :value="form.type"
         @input="(e: any) => (form.type = e.target.value)"
-        class="w-full"
       />
       <md-outlined-text-field
-        label="样式 Key"
-        placeholder="命中前端内置图，留空走 imageUrl"
+        label="样式 Key" placeholder="命中前端内置图，留空走 imageUrl"
         :value="form.styleKey"
         @input="(e: any) => (form.styleKey = e.target.value)"
-        class="w-full"
       />
       <md-outlined-text-field
-        label="图片 Key/URL"
-        placeholder="后端对象 key 或绝对 URL"
+        label="图片 Key/URL" placeholder="后端对象 key 或绝对 URL"
         :value="form.imageUrl"
         @input="(e: any) => (form.imageUrl = e.target.value)"
-        class="w-full"
       />
       <md-outlined-text-field
-        label="编号"
-        placeholder="12 / 50"
+        label="编号" placeholder="12 / 50"
         :value="form.serialNo"
         @input="(e: any) => (form.serialNo = e.target.value)"
-        class="w-full"
       />
       <md-outlined-text-field
-        label="发放"
-        placeholder="2026 上海 BW"
+        label="发放" placeholder="2026 上海 BW"
         :value="form.releasedAt"
         @input="(e: any) => (form.releasedAt = e.target.value)"
-        class="w-full"
       />
       <md-outlined-text-field
-        label="描述"
-        type="textarea"
-        rows="3"
+        label="描述" type="textarea" rows="3"
         :value="form.description"
         @input="(e: any) => (form.description = e.target.value)"
-        class="w-full"
       />
 
-      <div v-if="!isNew" class="flex items-center gap-2 pt-1">
+      <div v-if="!isNew" class="upload-row">
         <input ref="fileInput" type="file" accept="image/*" hidden @change="onPickFile" />
         <md-outlined-button type="button" :disabled="uploading" @click="fileInput?.click()">
           <md-icon slot="icon">upload</md-icon>
           {{ uploading ? '上传中…' : '上传徽章主图' }}
         </md-outlined-button>
-        <span class="text-xs text-gray-400">jpeg/png/webp/gif，最大 8MB</span>
+        <span class="m3-body-small text-on-surface-variant">
+          jpeg/png/webp/gif，最大 8MB
+        </span>
       </div>
 
-      <div class="pt-2">
+      <div class="pt-1">
         <md-filled-button type="submit" :disabled="submitting" class="w-full">
           {{ submitting ? '保存中…' : '保存' }}
         </md-filled-button>
@@ -183,7 +171,18 @@ onMounted(load)
 </template>
 
 <style scoped>
-md-outlined-text-field {
-  width: 100%;
+.edit-card {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+md-outlined-text-field { width: 100%; }
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 4px;
 }
 </style>

@@ -44,39 +44,48 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-3 p-2">
-    <div class="flex items-center gap-2">
+  <div class="space-y-5">
+    <header class="m3-page-header">
+      <div>
+        <h1 class="m3-headline-medium text-on-surface">徽章</h1>
+        <p class="m3-body-medium text-on-surface-variant mt-1">共 {{ total }} 条</p>
+      </div>
       <md-outlined-text-field
         label="按 id / 标题 / 系列搜索"
         :value="q"
         @input="(e: any) => (q = e.target.value)"
         @keyup.enter="load"
-        class="flex-1"
+        class="search-input"
       >
         <md-icon slot="leading-icon">search</md-icon>
       </md-outlined-text-field>
-      <md-filled-button @click="router.push('/m/roundnfc/badges/new')">
-        <md-icon slot="icon">add</md-icon>
-        新建
-      </md-filled-button>
-    </div>
+    </header>
 
-    <div v-if="loading" class="py-8 text-center text-sm text-gray-400">
+    <div v-if="loading" class="m3-loading">
       <md-circular-progress indeterminate aria-label="加载中" />
-    </div>
-    <div v-else-if="items.length === 0" class="py-8 text-center text-sm text-gray-400">
-      还没有徽章
+      <span class="m3-body-medium">加载中…</span>
     </div>
 
-    <md-list v-else class="m3-card rounded-2xl bg-white">
+    <div v-else-if="items.length === 0" class="m3-card m3-empty">
+      <div class="m3-empty-icon"><md-icon>workspace_premium</md-icon></div>
+      <div class="m3-title-medium text-on-surface">还没有徽章</div>
+      <div class="m3-body-medium text-on-surface-variant">
+        点击右下角按钮创建第一枚徽章。
+      </div>
+    </div>
+
+    <md-list v-else class="m3-card list-card">
       <template v-for="(b, i) in items" :key="b.id">
         <md-divider v-if="i > 0" />
         <md-list-item
           type="button"
           @click="router.push(`/m/roundnfc/badges/${encodeURIComponent(b.id)}`)"
         >
-          <div slot="headline">{{ b.title || '(未命名)' }}</div>
-          <div slot="supporting-text">{{ b.id }}　·　{{ b.series || '—' }}</div>
+          <md-icon slot="start" class="row-icon">workspace_premium</md-icon>
+          <div slot="headline" class="m3-title-medium">{{ b.title || '(未命名)' }}</div>
+          <div slot="supporting-text" class="m3-body-medium">
+            {{ b.id }} · {{ b.series || '—' }}
+          </div>
           <div slot="end">
             <md-icon-button aria-label="删除" @click.stop="onDelete(b)">
               <md-icon>delete</md-icon>
@@ -86,15 +95,19 @@ onMounted(load)
       </template>
     </md-list>
 
-    <p class="pt-1 text-center text-xs text-gray-400">共 {{ total }} 条</p>
+    <md-fab
+      class="m3-fab"
+      variant="primary"
+      aria-label="新建徽章"
+      @click="router.push('/m/roundnfc/badges/new')"
+    >
+      <md-icon slot="icon">add</md-icon>
+    </md-fab>
   </div>
 </template>
 
 <style scoped>
-md-outlined-text-field {
-  width: 100%;
-}
-md-list {
-  --md-list-container-color: #fff;
-}
+.search-input { min-width: 240px; }
+.list-card { padding: 4px 0; }
+.row-icon { color: var(--md-sys-color-primary); }
 </style>

@@ -16,7 +16,6 @@ import {
   type PasskeyInfo,
 } from '../api'
 
-// ----- TOTP -----
 const totpEnabled = ref(false)
 const totpSetup = ref<{ uri: string; secret: string } | null>(null)
 const totpQR = ref('')
@@ -77,7 +76,6 @@ async function handleDisableTOTP() {
   }
 }
 
-// ----- Passkeys -----
 const passkeys = ref<PasskeyInfo[]>([])
 const passkeyWorking = ref(false)
 const addDialog = ref<HTMLDialogElement & { show: () => void; close: () => void } | null>(null)
@@ -130,25 +128,38 @@ function fmtDate(s: string) {
 </script>
 
 <template>
-  <div class="mx-auto max-w-xl space-y-4 p-3">
-    <!-- TOTP section -->
-    <section class="m3-card rounded-3xl bg-white p-4">
-      <header class="flex items-center justify-between pb-2">
-        <h2 class="text-base font-medium">动态验证码 (TOTP)</h2>
+  <div class="mx-auto max-w-2xl space-y-5">
+    <header class="m3-page-header">
+      <div>
+        <h1 class="m3-headline-medium text-on-surface">安全设置</h1>
+        <p class="m3-body-medium text-on-surface-variant mt-1">
+          管理 TOTP 与 Passkey 二步验证。
+        </p>
+      </div>
+    </header>
+
+    <section class="m3-card p-6">
+      <div class="section-head">
+        <div>
+          <h2 class="m3-title-large text-on-surface">动态验证码 (TOTP)</h2>
+          <p class="m3-body-medium text-on-surface-variant mt-1">
+            登录时除密码外再输入 6 位动态码。
+          </p>
+        </div>
         <md-assist-chip
           :label="totpEnabled ? '已启用' : '未启用'"
-          :class="totpEnabled ? 'chip-success' : 'chip-muted'"
+          :class="totpEnabled ? 'chip-tertiary' : 'chip-muted'"
         />
-      </header>
+      </div>
 
-      <div v-if="!totpEnabled && !totpSetup">
-        <md-filled-button :disabled="totpWorking" class="w-full" @click="startTOTPSetup">
+      <div v-if="!totpEnabled && !totpSetup" class="mt-4">
+        <md-filled-button :disabled="totpWorking" @click="startTOTPSetup">
           开始设置
         </md-filled-button>
       </div>
 
-      <div v-if="totpSetup" class="space-y-3">
-        <p class="text-sm text-gray-600">
+      <div v-if="totpSetup" class="space-y-3 mt-4">
+        <p class="m3-body-medium text-on-surface-variant">
           用 Google Authenticator、Authy 或其他 TOTP 应用扫描二维码
         </p>
         <div class="flex justify-center">
@@ -156,12 +167,12 @@ function fmtDate(s: string) {
             v-if="totpQR"
             :src="totpQR"
             alt="TOTP QR"
-            class="h-48 w-48 rounded-xl border border-gray-200"
+            class="qr-img"
           />
         </div>
-        <p class="text-xs text-gray-500">
+        <p class="m3-body-small text-on-surface-variant">
           或手动输入密锁：
-          <code class="select-all break-all rounded bg-gray-100 px-1">{{ totpSetup.secret }}</code>
+          <code class="select-all break-all rounded px-1 secret-code">{{ totpSetup.secret }}</code>
         </p>
         <md-outlined-text-field
           label="6 位验证码"
@@ -173,49 +184,51 @@ function fmtDate(s: string) {
         />
         <div class="flex gap-2">
           <md-text-button class="flex-1" @click="totpSetup = null">取消</md-text-button>
-          <md-filled-button
-            class="flex-1"
-            :disabled="totpWorking"
-            @click="confirmTOTPEnable"
-          >
+          <md-filled-button class="flex-1" :disabled="totpWorking" @click="confirmTOTPEnable">
             验证并启用
           </md-filled-button>
         </div>
       </div>
 
-      <div v-if="totpEnabled">
-        <md-outlined-button
-          :disabled="totpWorking"
-          class="w-full"
-          @click="handleDisableTOTP"
-        >
+      <div v-if="totpEnabled" class="mt-4">
+        <md-outlined-button :disabled="totpWorking" @click="handleDisableTOTP">
           <md-icon slot="icon">lock_open</md-icon>
           关闭 TOTP
         </md-outlined-button>
       </div>
     </section>
 
-    <!-- Passkeys section -->
-    <section class="m3-card rounded-3xl bg-white p-4">
-      <header class="flex items-center justify-between pb-2">
-        <h2 class="text-base font-medium">Passkey / 安全密钥</h2>
+    <section class="m3-card p-6">
+      <div class="section-head">
+        <div>
+          <h2 class="m3-title-large text-on-surface">Passkey / 安全密钥</h2>
+          <p class="m3-body-medium text-on-surface-variant mt-1">
+            指纹、Face ID、YubiKey 等都可作为登录凭证。
+          </p>
+        </div>
         <md-filled-button @click="addDialog?.show()">
           <md-icon slot="icon">add</md-icon>
           添加
         </md-filled-button>
-      </header>
+      </div>
 
-      <p v-if="passkeys.length === 0" class="py-4 text-center text-sm text-gray-400">
-        尚未添加 Passkey
-      </p>
+      <div v-if="passkeys.length === 0" class="m3-empty pt-4 pb-2">
+        <div class="m3-empty-icon"><md-icon>key</md-icon></div>
+        <div class="m3-title-medium text-on-surface">尚未添加 Passkey</div>
+        <div class="m3-body-medium text-on-surface-variant">
+          点击右上角「添加」开始注册。
+        </div>
+      </div>
 
-      <md-list v-else>
+      <md-list v-else class="mt-2">
         <template v-for="(pk, i) in passkeys" :key="pk.id">
           <md-divider v-if="i > 0" />
           <md-list-item>
-            <md-icon slot="start">key</md-icon>
-            <div slot="headline">{{ pk.name }}</div>
-            <div slot="supporting-text">添加于 {{ fmtDate(pk.createdAt) }}</div>
+            <md-icon slot="start" class="row-icon">key</md-icon>
+            <div slot="headline" class="m3-title-medium">{{ pk.name }}</div>
+            <div slot="supporting-text" class="m3-body-medium">
+              添加于 {{ fmtDate(pk.createdAt) }}
+            </div>
             <md-icon-button
               slot="end"
               :disabled="passkeyWorking"
@@ -231,12 +244,11 @@ function fmtDate(s: string) {
 
     <md-dialog ref="addDialog">
       <div slot="headline">添加 Passkey</div>
-      <form slot="content" id="add-passkey-form" method="dialog" class="pt-2">
+      <form slot="content" id="add-passkey-form" method="dialog" class="dialog-form">
         <md-outlined-text-field
           label="名称（如 iPhone Face ID、YubiKey）"
           :value="newKeyName"
           @input="(e: any) => (newKeyName = e.target.value)"
-          class="w-full"
         />
       </form>
       <div slot="actions">
@@ -252,15 +264,27 @@ function fmtDate(s: string) {
 </template>
 
 <style scoped>
-md-outlined-text-field {
-  width: 100%;
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
-.chip-success {
-  --md-assist-chip-label-text-color: #146c43;
-  --md-assist-chip-outline-color: #146c43;
+.qr-img {
+  height: 192px;
+  width: 192px;
+  border-radius: 16px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: white;
 }
-.chip-muted {
-  --md-assist-chip-label-text-color: #6b7280;
-  --md-assist-chip-outline-color: #d1d5db;
+.secret-code {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
 }
+.row-icon { color: var(--md-sys-color-primary); }
+.dialog-form {
+  padding-top: 8px;
+}
+.dialog-form md-outlined-text-field { width: 100%; }
+md-outlined-text-field { width: 100%; }
 </style>
