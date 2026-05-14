@@ -1,0 +1,384 @@
+/*
+ * Material 3 color system + typescale + utility shims.
+ * Palette derived from a #5B5EBF brand seed (calm blue-violet).
+ * Values were generated once and hand-pasted so we don't ship
+ * material-color-utilities at runtime.
+ */
+
+:root {
+  /* M3 light scheme */
+  --md-sys-color-primary: #4F52B2;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #E0E0FF;
+  --md-sys-color-on-primary-container: #060764;
+
+  --md-sys-color-secondary: #5C5D72;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #E1E0F9;
+  --md-sys-color-on-secondary-container: #191A2C;
+
+  --md-sys-color-tertiary: #78536B;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #FFD8EC;
+  --md-sys-color-on-tertiary-container: #2E1126;
+
+  --md-sys-color-error: #BA1A1A;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-error-container: #FFDAD6;
+  --md-sys-color-on-error-container: #410002;
+
+  --md-sys-color-background: #FCFBFF;
+  --md-sys-color-on-background: #1B1B21;
+
+  --md-sys-color-surface: #FCFBFF;
+  --md-sys-color-on-surface: #1B1B21;
+  --md-sys-color-surface-variant: #E3E1EC;
+  --md-sys-color-on-surface-variant: #46464F;
+
+  --md-sys-color-surface-dim: #DCDAE0;
+  --md-sys-color-surface-bright: #FCFBFF;
+  --md-sys-color-surface-container-lowest: #FFFFFF;
+  --md-sys-color-surface-container-low: #F6F4FA;
+  --md-sys-color-surface-container: #F0EFF4;
+  --md-sys-color-surface-container-high: #EAE9EF;
+  --md-sys-color-surface-container-highest: #E5E3E9;
+
+  --md-sys-color-outline: #777680;
+  --md-sys-color-outline-variant: #C7C5D0;
+  --md-sys-color-inverse-surface: #303036;
+  --md-sys-color-inverse-on-surface: #F3F0F7;
+  --md-sys-color-inverse-primary: #BFC2FF;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-surface-tint: #4F52B2;
+
+  /* M3 elevation tokens — soft, layered shadows. */
+  --md-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px 1px rgba(0, 0, 0, 0.06);
+  --md-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 6px 2px rgba(0, 0, 0, 0.08);
+  --md-elevation-3: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 8px 3px rgba(0, 0, 0, 0.10);
+
+  /* Motion */
+  --md-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'],
+:root[data-theme='dark'] body {
+  /* M3 dark scheme */
+  --md-sys-color-primary: #BFC2FF;
+  --md-sys-color-on-primary: #1A1C7E;
+  --md-sys-color-primary-container: #353799;
+  --md-sys-color-on-primary-container: #E0E0FF;
+
+  --md-sys-color-secondary: #C5C4DD;
+  --md-sys-color-on-secondary: #2E2F42;
+  --md-sys-color-secondary-container: #444559;
+  --md-sys-color-on-secondary-container: #E1E0F9;
+
+  --md-sys-color-tertiary: #E8B9D4;
+  --md-sys-color-on-tertiary: #46263B;
+  --md-sys-color-tertiary-container: #5E3C52;
+  --md-sys-color-on-tertiary-container: #FFD8EC;
+
+  --md-sys-color-error: #FFB4AB;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000A;
+  --md-sys-color-on-error-container: #FFDAD6;
+
+  --md-sys-color-background: #131318;
+  --md-sys-color-on-background: #E5E1E9;
+
+  --md-sys-color-surface: #131318;
+  --md-sys-color-on-surface: #E5E1E9;
+  --md-sys-color-surface-variant: #46464F;
+  --md-sys-color-on-surface-variant: #C7C5D0;
+
+  --md-sys-color-surface-dim: #131318;
+  --md-sys-color-surface-bright: #39383F;
+  --md-sys-color-surface-container-lowest: #0E0E13;
+  --md-sys-color-surface-container-low: #1B1B21;
+  --md-sys-color-surface-container: #1F1F25;
+  --md-sys-color-surface-container-high: #2A2A30;
+  --md-sys-color-surface-container-highest: #35343B;
+
+  --md-sys-color-outline: #918F9A;
+  --md-sys-color-outline-variant: #46464F;
+  --md-sys-color-inverse-surface: #E5E1E9;
+  --md-sys-color-inverse-on-surface: #303036;
+  --md-sys-color-inverse-primary: #4F52B2;
+  --md-sys-color-surface-tint: #BFC2FF;
+
+  --md-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.3);
+  --md-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 6px 2px rgba(0, 0, 0, 0.35);
+  --md-elevation-3: 0 1px 3px rgba(0, 0, 0, 0.5), 0 4px 8px 3px rgba(0, 0, 0, 0.4);
+
+  color-scheme: dark;
+}
+
+/* Follow OS preference when no explicit toggle is set. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    --md-sys-color-primary: #BFC2FF;
+    --md-sys-color-on-primary: #1A1C7E;
+    --md-sys-color-primary-container: #353799;
+    --md-sys-color-on-primary-container: #E0E0FF;
+
+    --md-sys-color-secondary: #C5C4DD;
+    --md-sys-color-on-secondary: #2E2F42;
+    --md-sys-color-secondary-container: #444559;
+    --md-sys-color-on-secondary-container: #E1E0F9;
+
+    --md-sys-color-tertiary: #E8B9D4;
+    --md-sys-color-on-tertiary: #46263B;
+    --md-sys-color-tertiary-container: #5E3C52;
+    --md-sys-color-on-tertiary-container: #FFD8EC;
+
+    --md-sys-color-error: #FFB4AB;
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-error-container: #93000A;
+    --md-sys-color-on-error-container: #FFDAD6;
+
+    --md-sys-color-background: #131318;
+    --md-sys-color-on-background: #E5E1E9;
+
+    --md-sys-color-surface: #131318;
+    --md-sys-color-on-surface: #E5E1E9;
+    --md-sys-color-surface-variant: #46464F;
+    --md-sys-color-on-surface-variant: #C7C5D0;
+
+    --md-sys-color-surface-container-lowest: #0E0E13;
+    --md-sys-color-surface-container-low: #1B1B21;
+    --md-sys-color-surface-container: #1F1F25;
+    --md-sys-color-surface-container-high: #2A2A30;
+    --md-sys-color-surface-container-highest: #35343B;
+
+    --md-sys-color-outline: #918F9A;
+    --md-sys-color-outline-variant: #46464F;
+
+    --md-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.3);
+    --md-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 6px 2px rgba(0, 0, 0, 0.35);
+    --md-elevation-3: 0 1px 3px rgba(0, 0, 0, 0.5), 0 4px 8px 3px rgba(0, 0, 0, 0.4);
+
+    color-scheme: dark;
+  }
+}
+
+/* ------------------------------------------------------------- *
+ * Page background + base text colour follow the theme tokens.
+ * ------------------------------------------------------------- */
+html,
+body {
+  background: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
+  transition:
+    background-color 250ms var(--md-easing-standard),
+    color 250ms var(--md-easing-standard);
+}
+
+/* ------------------------------------------------------------- *
+ * Tailwind utility shims that map to M3 tokens.
+ * ------------------------------------------------------------- */
+.bg-surface { background-color: var(--md-sys-color-surface); }
+.bg-surface-lowest { background-color: var(--md-sys-color-surface-container-lowest); }
+.bg-surface-low { background-color: var(--md-sys-color-surface-container-low); }
+.bg-surface-container { background-color: var(--md-sys-color-surface-container); }
+.bg-surface-high { background-color: var(--md-sys-color-surface-container-high); }
+.bg-surface-highest { background-color: var(--md-sys-color-surface-container-highest); }
+.bg-primary-container { background-color: var(--md-sys-color-primary-container); }
+.bg-secondary-container { background-color: var(--md-sys-color-secondary-container); }
+.bg-tertiary-container { background-color: var(--md-sys-color-tertiary-container); }
+.bg-error-container { background-color: var(--md-sys-color-error-container); }
+
+.text-on-surface { color: var(--md-sys-color-on-surface); }
+.text-on-surface-variant { color: var(--md-sys-color-on-surface-variant); }
+.text-on-primary-container { color: var(--md-sys-color-on-primary-container); }
+.text-on-secondary-container { color: var(--md-sys-color-on-secondary-container); }
+.text-on-tertiary-container { color: var(--md-sys-color-on-tertiary-container); }
+.text-on-error-container { color: var(--md-sys-color-on-error-container); }
+.text-primary { color: var(--md-sys-color-primary); }
+
+.border-outline { border-color: var(--md-sys-color-outline); }
+.border-outline-variant { border-color: var(--md-sys-color-outline-variant); }
+
+/* ------------------------------------------------------------- *
+ * M3 typescale.
+ * ------------------------------------------------------------- */
+.m3-display-medium {
+  font: 400 45px/52px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0;
+}
+.m3-headline-large {
+  font: 400 32px/40px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0;
+}
+.m3-headline-medium {
+  font: 400 28px/36px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0;
+}
+.m3-headline-small {
+  font: 400 24px/32px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0;
+}
+.m3-title-large {
+  font: 500 22px/28px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0;
+}
+.m3-title-medium {
+  font: 500 16px/24px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0.15px;
+}
+.m3-title-small {
+  font: 500 14px/20px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0.1px;
+}
+.m3-body-large {
+  font: 400 16px/24px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0.5px;
+}
+.m3-body-medium {
+  font: 400 14px/20px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0.25px;
+}
+.m3-body-small {
+  font: 400 12px/16px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0.4px;
+}
+.m3-label-large {
+  font: 500 14px/20px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0.1px;
+}
+.m3-label-medium {
+  font: 500 12px/16px 'Roboto', system-ui, sans-serif;
+  letter-spacing: 0.5px;
+}
+
+/* ------------------------------------------------------------- *
+ * M3 card surface — used for dashboard tiles, list wrappers,
+ * settings sections, login forms.
+ * ------------------------------------------------------------- */
+.m3-card {
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  border-radius: 28px;
+  box-shadow: var(--md-elevation-1);
+  transition: box-shadow 200ms var(--md-easing-standard),
+    transform 200ms var(--md-easing-standard);
+}
+.m3-card-interactive { cursor: pointer; }
+.m3-card-interactive:hover {
+  box-shadow: var(--md-elevation-2);
+  transform: translateY(-1px);
+}
+
+/* ------------------------------------------------------------- *
+ * Page header pattern.
+ * ------------------------------------------------------------- */
+.m3-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 4px 20px;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------- *
+ * Empty-state block.
+ * ------------------------------------------------------------- */
+.m3-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+}
+.m3-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.m3-empty-icon md-icon { font-size: 32px; --md-icon-size: 32px; }
+
+/* Loading wrapper — centred 200px region with caption. */
+.m3-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 200px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ------------------------------------------------------------- *
+ * FAB anchoring.
+ * ------------------------------------------------------------- */
+.m3-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+}
+
+/* ------------------------------------------------------------- *
+ * Material web component surface overrides — keep widgets tied
+ * to the theme tokens rather than their built-in white surface.
+ * ------------------------------------------------------------- */
+md-list {
+  --md-list-container-color: transparent;
+}
+md-list-item {
+  --md-list-item-container-color: transparent;
+  --md-list-item-label-text-color: var(--md-sys-color-on-surface);
+  --md-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
+  --md-list-item-leading-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-list-item-trailing-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-list-item-one-line-container-height: 64px;
+  --md-list-item-two-line-container-height: 72px;
+  --md-list-item-three-line-container-height: 88px;
+}
+md-divider {
+  --md-divider-color: var(--md-sys-color-outline-variant);
+}
+md-dialog {
+  --md-dialog-container-color: var(--md-sys-color-surface-container-high);
+  --md-dialog-headline-color: var(--md-sys-color-on-surface);
+  --md-dialog-supporting-text-color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Tertiary-container assist chip — semantic "positive" tag. */
+.chip-tertiary {
+  --md-assist-chip-label-text-color: var(--md-sys-color-on-tertiary-container);
+  --md-assist-chip-outline-color: transparent;
+  --md-assist-chip-container-shape: 8px;
+  background: var(--md-sys-color-tertiary-container);
+  border-radius: 8px;
+}
+.chip-primary {
+  --md-assist-chip-label-text-color: var(--md-sys-color-on-primary-container);
+  --md-assist-chip-outline-color: transparent;
+  background: var(--md-sys-color-primary-container);
+  border-radius: 8px;
+}
+.chip-warn {
+  --md-assist-chip-label-text-color: var(--md-sys-color-on-tertiary-container);
+  --md-assist-chip-outline-color: var(--md-sys-color-outline-variant);
+}
+.chip-danger {
+  --md-assist-chip-label-text-color: var(--md-sys-color-on-error-container);
+  --md-assist-chip-outline-color: transparent;
+  background: var(--md-sys-color-error-container);
+  border-radius: 8px;
+}
+.chip-muted {
+  --md-assist-chip-label-text-color: var(--md-sys-color-on-surface-variant);
+  --md-assist-chip-outline-color: var(--md-sys-color-outline-variant);
+}
