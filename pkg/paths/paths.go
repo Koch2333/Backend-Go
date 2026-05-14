@@ -78,12 +78,20 @@ func fileExists(p string) bool {
 // ExecDir returns the directory of the running executable, falling back to
 // the current working directory. Used by module envinit for first-run config
 // release so that running the binary in any folder drops config alongside it.
+//
+// During `go run` the executable lives under `/tmp/go-build*/exe/…`, which is
+// useless for config persistence — when we detect that, we fall back to cwd so
+// development still drops configs at the project root.
 func ExecDir() string {
+	if v := strings.TrimSpace(os.Getenv("CONFIG_DIR")); v != "" {
+		return v
+	}
 	if exe, err := os.Executable(); err == nil {
 		if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 			exe = resolved
 		}
-		if d := filepath.Dir(exe); d != "" {
+		d := filepath.Dir(exe)
+		if d != "" && !isGoBuildTempDir(d) {
 			return d
 		}
 	}
@@ -91,6 +99,19 @@ func ExecDir() string {
 		return wd
 	}
 	return "."
+}
+
+// isGoBuildTempDir reports whether the path looks like a Go toolchain build
+// cache used by `go run`/`go test` (e.g. /tmp/go-build3849.../b001/exe).
+func isGoBuildTempDir(dir string) bool {
+	tmp := os.TempDir()
+	if tmp != "" {
+		rel, err := filepath.Rel(tmp, dir)
+		if err == nil && !strings.HasPrefix(rel, "..") && strings.Contains(rel, "go-build") {
+			return true
+		}
+	}
+	return strings.Contains(dir, string(os.PathSeparator)+"go-build")
 }
 
 func CallerFileLine(skip int) string {
