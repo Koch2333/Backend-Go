@@ -100,44 +100,42 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-3 p-2">
-    <!-- search + new -->
-    <div class="flex items-center gap-2">
+  <div class="space-y-5">
+    <header class="m3-page-header">
+      <div>
+        <h1 class="m3-headline-medium text-on-surface">短链规则</h1>
+        <p class="m3-body-medium text-on-surface-variant mt-1">共 {{ total }} 条</p>
+      </div>
       <md-outlined-text-field
         label="搜索 name / URL"
         :value="q"
         @input="(e: any) => (q = e.target.value)"
         @keyup.enter="load"
-        class="flex-1"
+        class="search-input"
       >
         <md-icon slot="leading-icon">search</md-icon>
       </md-outlined-text-field>
-      <md-filled-button @click="openCreate">
-        <md-icon slot="icon">add</md-icon>
-        新建
-      </md-filled-button>
-    </div>
+    </header>
 
-    <div
-      v-if="loading"
-      class="py-8 text-center text-sm text-gray-400"
-    >
+    <div v-if="loading" class="m3-loading">
       <md-circular-progress indeterminate aria-label="加载中" />
-    </div>
-    <div
-      v-else-if="items.length === 0"
-      class="py-8 text-center text-sm text-gray-400"
-    >
-      还没有短链规则
+      <span class="m3-body-medium">加载中…</span>
     </div>
 
-    <md-list v-else class="rounded-2xl bg-white">
+    <div v-else-if="items.length === 0" class="m3-card m3-empty">
+      <div class="m3-empty-icon"><md-icon>link_off</md-icon></div>
+      <div class="m3-title-medium text-on-surface">还没有短链规则</div>
+      <div class="m3-body-medium text-on-surface-variant">点击右下角的按钮创建第一条。</div>
+    </div>
+
+    <md-list v-else class="m3-card list-card">
       <template v-for="(r, i) in items" :key="r.name">
         <md-divider v-if="i > 0" />
         <md-list-item>
-          <div slot="headline">{{ r.name }}</div>
-          <div slot="supporting-text" class="truncate">{{ r.targetUrl }}</div>
-          <div slot="end" class="flex items-center gap-1">
+          <md-icon slot="start" class="row-icon">link</md-icon>
+          <div slot="headline" class="m3-title-medium">{{ r.name }}</div>
+          <div slot="supporting-text" class="m3-body-medium truncate">{{ r.targetUrl }}</div>
+          <div slot="end" class="row-actions">
             <md-switch
               :selected="r.enabled"
               @change="(e: any) => onToggle(r, e.target.selected)"
@@ -153,26 +151,26 @@ onMounted(load)
       </template>
     </md-list>
 
-    <p class="pt-1 text-center text-xs text-gray-400">共 {{ total }} 条</p>
+    <md-fab class="m3-fab" variant="primary" aria-label="新建规则" @click="openCreate">
+      <md-icon slot="icon">add</md-icon>
+    </md-fab>
 
     <md-dialog ref="editDialog">
       <div slot="headline">{{ editing.isNew ? '新建规则' : '编辑规则' }}</div>
-      <form slot="content" id="rule-form" method="dialog" class="space-y-3 pt-2">
+      <form slot="content" id="rule-form" method="dialog" class="dialog-form">
         <md-outlined-text-field
           label="name"
           :value="editing.name"
           :readonly="!editing.isNew"
           @input="(e: any) => (editing.name = e.target.value)"
-          class="w-full"
         />
         <md-outlined-text-field
           label="跳转 URL"
           :value="editing.targetUrl"
           @input="(e: any) => (editing.targetUrl = e.target.value)"
-          class="w-full"
         />
-        <label class="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
-          <span class="text-sm">启用</span>
+        <label class="switch-row">
+          <span class="m3-body-medium text-on-surface">启用</span>
           <md-switch
             :selected="editing.enabled"
             @change="(e: any) => (editing.enabled = e.target.selected)"
@@ -190,10 +188,23 @@ onMounted(load)
 </template>
 
 <style scoped>
-md-outlined-text-field {
-  width: 100%;
+.search-input { min-width: 240px; }
+.list-card { padding: 4px 0; }
+.row-icon { color: var(--md-sys-color-primary); }
+.row-actions { display: flex; align-items: center; gap: 4px; }
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
 }
-md-list {
-  --md-list-container-color: #fff;
+.dialog-form md-outlined-text-field { width: 100%; }
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--md-sys-color-surface-container-high);
 }
 </style>

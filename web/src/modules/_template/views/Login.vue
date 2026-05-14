@@ -28,20 +28,18 @@ async function onSubmit() {
 </script>
 
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-surface-container px-6">
-    <form
-      class="m3-card w-full max-w-sm rounded-3xl p-6 shadow"
-      @submit.prevent="onSubmit"
-    >
-      <h1 class="text-center text-base font-medium text-on-surface">Template 后台</h1>
+  <main class="login-shell">
+    <div class="login-blob blob-a" />
+    <div class="login-blob blob-b" />
+    <form class="m3-card login-card" @submit.prevent="onSubmit">
+      <div class="logo m3-display-medium">Template</div>
 
-      <div class="mt-6 space-y-4">
+      <div class="fields">
         <md-outlined-text-field
           label="用户名"
           :value="form.username"
           @input="(e: any) => (form.username = e.target.value)"
           required
-          class="w-full"
         />
         <md-outlined-text-field
           label="密码"
@@ -49,12 +47,11 @@ async function onSubmit() {
           :value="form.password"
           @input="(e: any) => (form.password = e.target.value)"
           required
-          class="w-full"
         />
       </div>
 
-      <div class="mt-6">
-        <md-filled-button type="submit" :disabled="submitting" class="w-full">
+      <div class="actions">
+        <md-filled-button type="submit" :disabled="submitting">
           {{ submitting ? '登录中…' : '登录' }}
         </md-filled-button>
       </div>
@@ -63,17 +60,57 @@ async function onSubmit() {
 </template>
 
 <style scoped>
-.bg-surface-container {
-  background: #eef0f3;
+.login-shell {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--md-sys-color-surface-container-lowest);
+  overflow: hidden;
 }
-.m3-card {
-  background: #fff;
+.login-blob {
+  position: absolute;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  filter: blur(8px);
+  pointer-events: none;
+  opacity: 0.55;
 }
-.text-on-surface {
-  color: #1a1c1e;
+.blob-a {
+  top: -160px;
+  left: -120px;
+  background: radial-gradient(circle, var(--md-sys-color-primary-container) 0%, transparent 70%);
 }
-md-outlined-text-field,
-md-filled-button {
+.blob-b {
+  bottom: -180px;
+  right: -140px;
+  background: radial-gradient(circle, var(--md-sys-color-tertiary-container) 0%, transparent 70%);
+}
+.login-card {
+  position: relative;
   width: 100%;
+  max-width: 400px;
+  padding: 32px;
+  box-shadow: var(--md-elevation-2);
 }
+.logo {
+  background: linear-gradient(
+    135deg,
+    var(--md-sys-color-primary) 0%,
+    var(--md-sys-color-tertiary) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 500;
+  font-size: 36px;
+  line-height: 44px;
+  text-align: center;
+}
+.fields { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
+.actions { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+md-outlined-text-field, md-filled-button { width: 100%; }
 </style>
