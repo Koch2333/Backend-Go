@@ -39,7 +39,7 @@ func defaultEnv() []byte {
 			"# WebAuthn / Passkey\n" +
 			"REDIRECT_WEBAUTHN_RPID=localhost\n" +
 			"REDIRECT_WEBAUTHN_RP_NAME=Redirect Admin\n" +
-			"REDIRECT_WEBAUTHN_ORIGINS=http://localhost:5174\n",
+			"REDIRECT_WEBAUTHN_ORIGINS=http://localhost:5174,http://localhost:8081\n",
 	)
 }
 

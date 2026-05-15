@@ -45,7 +45,7 @@ func defaultEnv() []byte {
 			"ROUNDNFC_WEBAUTHN_RPID=localhost\n" +
 			"ROUNDNFC_WEBAUTHN_RP_NAME=RoundNFC Admin\n" +
 			"# 多个 origin 用逗号分隔\n" +
-			"ROUNDNFC_WEBAUTHN_ORIGINS=http://localhost:5174\n",
+			"ROUNDNFC_WEBAUTHN_ORIGINS=http://localhost:5174,http://localhost:8081\n",
 	)
 }
 

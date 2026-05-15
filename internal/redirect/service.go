@@ -50,8 +50,12 @@ func loadAdminConfig() AdminConfig {
 			ttl = time.Duration(n) * time.Hour
 		}
 	}
+	originsRaw := os.Getenv("REDIRECT_WEBAUTHN_ORIGINS")
+	if strings.TrimSpace(originsRaw) == "" {
+		originsRaw = "http://localhost:5174,http://localhost:8081"
+	}
 	var origins []string
-	for _, o := range strings.Split(os.Getenv("REDIRECT_WEBAUTHN_ORIGINS"), ",") {
+	for _, o := range strings.Split(originsRaw, ",") {
 		if o = strings.TrimSpace(o); o != "" {
 			origins = append(origins, o)
 		}

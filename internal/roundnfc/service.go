@@ -60,7 +60,7 @@ func ConfigFromEnv() Config {
 		}
 		return def
 	}
-	origins := strings.Split(getStr("ROUNDNFC_WEBAUTHN_ORIGINS", "http://localhost:5174"), ",")
+	origins := strings.Split(getStr("ROUNDNFC_WEBAUTHN_ORIGINS", "http://localhost:5174,http://localhost:8081"), ",")
 	for i, o := range origins {
 		origins[i] = strings.TrimSpace(o)
 	}

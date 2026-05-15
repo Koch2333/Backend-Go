@@ -145,17 +145,19 @@ const editDialog = ref<HTMLDialogElement & { show: () => void; close: () => void
 
 ```bash
 cd web
-pnpm dev          # http://localhost:5174/admin/
+pnpm dev          # http://localhost:5174/
 ```
 
 Vite 已经设好 `/api` 代理到 `http://localhost:8080`，正常起后端即可。
 
 ## 5. 各模块后台入口
 
-| 模块     | 后台路由前缀                  | 登录页                  |
+| 模块     | 后台 API 路由前缀（主端口）         | 登录页（admin 端口）           |
 | -------- | ----------------------------- | ----------------------- |
-| redirect | `/api/redirect/admin/*`       | `/admin/m/redirect/login`  |
-| roundnfc | `/api/roundnfc/admin/*`       | `/admin/m/roundnfc/login`  |
+| redirect | `/api/redirect/admin/*`       | `/m/redirect/login`  |
+| roundnfc | `/api/roundnfc/admin/*`       | `/m/roundnfc/login`  |
+
+API 在主端口（`HTTP_ADDR`，默认 `:8080`），SPA 在 admin 端口（`HTTP_ADMIN_ADDR`，默认 `:8081`，可设为空字符串关闭）。 admin 端口的 `index.html` 里会自动注入 `window.__ROAST_RUNTIME.apiBase`，SPA 据此知道 API 在哪 —— 用户无需手动配置 BackendSwitcher。
 
 两个模块共用同一个 `authflow` 包：用户名 + 密码 + 可选 TOTP + 可选 Passkey/WebAuthn。账号配置在对应的 `config/<mod>/.env` 中（`*_ADMIN_USERNAME` / `*_ADMIN_PASSWORD_HASH`）。
 
@@ -173,37 +175,40 @@ A：在 `web/src/shell/m3.ts` 里 `import '@material/web/<dir>/<name>.js'`，模
 **Q：Vue 警告 "unknown custom element: md-…"？**
 A：`web/vite.config.ts` 里 `compilerOptions.isCustomElement = (tag) => tag.startsWith('md-')` 已经处理。如果新增了别的前缀，扩展这里即可。
 
-## 7. 把 SPA 单独部署
+## 7. 端口分布 & 单独部署 SPA
 
-SPA 默认与后端同源（路径用相对的 `/api/...`）。如果你想把 SPA 放在 `admin.example.com`、后端放在 `api.example.com`，按下面来。
+默认布局（直接跑二进制就这样）：
 
-### 7.1 单独构建 SPA
+| 用途 | 监听 | 控制 env | 内容 |
+| ---- | ---- | -------- | ---- |
+| 后端 API | `:8080` | `HTTP_ADDR` | `/api/*`、`/status`、`/version`、`/`（JSON 状态） |
+| 后台 SPA | `:8081` | `HTTP_ADMIN_ADDR`（设为空字符串可关闭） | `/`、`/assets/*`、SPA 路由 fallback |
 
-**先决定 base path**：SPA 的资源 URL 和路由 base 都是构建时定的。
+两个端口各自独立，API 不挂在 admin 端口，SPA 也不挂在 API 端口。admin 端口在 serve `index.html` 时会按当前请求自动注入：
 
-| 想要的访问 URL | 构建命令 | 静态服务器需要 |
-| -------------- | -------- | -------------- |
-| `https://admin.example.com/admin/m/redirect/login` | `pnpm build`（默认 base `/admin/`） | `/admin/*` fallback 到 `/admin/index.html` |
-| `https://admin.example.com/m/redirect/login`（域名根挂载） | `VITE_BASE=/ pnpm build` | `/*` fallback 到 `/index.html` |
-
-```bash
-cd web
-pnpm install --no-frozen-lockfile
-
-# 二选一
-pnpm build              # base = /admin/
-VITE_BASE=/ pnpm build  # base = /
-
-# 产物：internal/adminui/dist/
+```html
+<script>window.__ROAST_RUNTIME={"apiBase":"http://<请求主机名>:<HTTP_ADDR 的端口>"}</script>
 ```
 
-base 不匹配的典型症状：登录页能打开，但点登录后跳转 404，或资源（JS/CSS）整个加载失败。原因是路由 push 的路径会被加上 base 前缀，与静态服务器实际服务的路径对不上。挑一种、保持一致即可。
+SPA 读到后就知道 API 在哪，开箱即用，不用每次手点 BackendSwitcher。
 
-把 `internal/adminui/dist/` 整个拷到任意静态托管处（Nginx、Cloudflare Pages、S3 + CloudFront、Vercel 等）。别忘了 SPA history fallback。
+### 7.1 反向代理后面的部署
+
+如果两个端口都被前面的代理重写过（比如 SPA 在 `https://admin.example.com`、API 在 `https://api.example.com`），自动推导算不出来。设这个 env 显式覆盖：
+
+```bash
+HTTP_PUBLIC_API_BASE=https://api.example.com
+```
+
+也可以完全关掉 admin 端口（如果你想自己用 nginx/CDN 托管 SPA dist）：
+
+```bash
+HTTP_ADMIN_ADDR=    # 留空，二进制就不再开 :8081
+```
 
 ### 7.2 后端 CORS
 
-后端已经支持配置 CORS，在运行环境里设置：
+SPA 跨域调 API，需要 CORS 放行。本机默认（`localhost:5174 / 127.0.0.1:3000 / localhost:HTTP_ADMIN_ADDR 端口`）已经覆盖了 admin 端口的本机源。生产环境配：
 
 ```bash
 HTTP_CORS_ORIGINS=https://admin.example.com
@@ -212,27 +217,54 @@ HTTP_CORS_CREDENTIALS=true
 
 多个来源用逗号分隔。需要带 cookie 的话保持 `HTTP_CORS_CREDENTIALS=true`。
 
-### 7.3 WebAuthn / Passkey 关键警告
-
-WebAuthn 凭证是绑死在 **SPA 的 origin** 上的，不是后端的。所以跨域部署时，必须把后端的 RP ID / Origins 改成 SPA 的域名：
+### 7.3 自己托管 SPA dist（不用内置的 admin 端口）
 
 ```bash
-# 以 redirect 模块为例（roundnfc 同理）
+cd web
+pnpm install --no-frozen-lockfile
+
+# 默认 base = /，dist/ 内容挂在域名根
+pnpm build
+
+# 如果你要挂在 nginx 的 /admin/ 子路径下
+VITE_BASE=/admin/ pnpm build
+```
+
+把 `internal/adminui/dist/` 拷到任何静态托管处（Nginx、Cloudflare Pages、S3 + CloudFront、Vercel 等）。配 SPA history fallback 把未命中文件的请求回退到对应的 `index.html`。
+
+注意：这种自托管模式下没有运行时注入的 `__ROAST_RUNTIME.apiBase`。用户首次打开页面要么走 `?api=https://api.example.com` 一次性传入，要么点登录页顶部的"连接到："铅笔手填。两者都会持久化到 `localStorage.roast.<module>.apiBase`。
+
+### 7.4 WebAuthn / Passkey 关键警告
+
+WebAuthn 凭证绑死在 **SPA 的 origin** 上（不是后端的）。RPID 必须等于 SPA 的主机名，origins 必须包含 SPA 实际暴露的所有 `<scheme>://<host>:<port>`。
+
+```bash
+# 同机两端口（默认）：
+#   admin 端口 :8081 是 SPA 的 origin，主机名是 localhost
+#   API 端口 :8080 不参与 WebAuthn 校验
+REDIRECT_WEBAUTHN_RPID=localhost
+REDIRECT_WEBAUTHN_ORIGINS=http://localhost:8081
+# roundnfc 同理：ROUNDNFC_WEBAUTHN_RPID/ORIGINS
+```
+
+公网部署（`https://admin.example.com`）：
+
+```bash
 REDIRECT_WEBAUTHN_RPID=admin.example.com
 REDIRECT_WEBAUTHN_ORIGINS=https://admin.example.com
 ```
 
-**不改的话**，浏览器会直接报：
+不改的话，浏览器会直接报：
 
 > `SecurityError: The relying party ID is not a registrable domain suffix of, nor equal to the current document's domain.`
 
 注册和登录都会失败。
 
-### 7.4 用户怎么切后端
+### 7.5 用户怎么手动切换后端
 
-两种方式：
+通常不需要 —— admin 端口注入的 `__ROAST_RUNTIME.apiBase` 已经把默认指好。但有需要时：
 
-1. **登录页右上角**：每个模块的登录页顶部有一行「连接到：…」，点旁边的铅笔，把后端 base URL（如 `https://api.example.com`）粘进去保存即可。留空表示同源。
-2. **URL 参数**：用 `?api=https://api.example.com` 打开登录页，参数会被持久化到 localStorage（key：`roast.<module>.apiBase`），然后从 URL 里清掉。
+1. **登录页顶部"连接到："**：点铅笔，输入 base URL（如 `https://api.example.com`），保存。留空恢复默认（运行时注入的，或同源）。
+2. **URL 参数**：用 `?api=https://api.example.com` 打开登录页。参数会持久化到 `localStorage.roast.<module>.apiBase`，再从 URL 上清掉。
 
-切换是按模块独立保存的，redirect 和 roundnfc 互不影响。
+按模块独立保存。覆盖优先级：localStorage > `__ROAST_RUNTIME` > 同源。
