@@ -84,6 +84,12 @@ jobs:
       - name: Resolve Go modules
         run: go mod tidy
 
+      - name: Generate module imports
+        # cmd/genmod scans internal/**/module.go and writes
+        # internal/bootstrap/mod/autogen_imports.go (gitignored). Without
+        # this the binary boots with zero modules registered.
+        run: go generate ./internal/bootstrap/mod
+
       - name: Build binary
         env:
           GOOS: ${{ matrix.os }}
