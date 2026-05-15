@@ -2,6 +2,7 @@ package paths
 
 import (
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,6 +15,9 @@ var (
 	once       sync.Once
 	cachedRoot string
 	cachedErr  error
+
+	execDirOnce sync.Once
+	execDirVal  string
 )
 
 func Root() (string, error) {
@@ -75,43 +79,59 @@ func fileExists(p string) bool {
 	return err == nil
 }
 
-// ExecDir returns the directory of the running executable, falling back to
-// the current working directory. Used by module envinit for first-run config
-// release so that running the binary in any folder drops config alongside it.
+// ExecDir returns the directory used to release per-module config files.
+// Resolution order:
+//  1. CONFIG_DIR env var (absolute or relative)
+//  2. Directory of the current executable — Windows: C:\path\to\server.exe
+//     → C:\path\to ; POSIX: /opt/roast/server → /opt/roast
+//  3. Cwd (used when the exe lives under a Go toolchain build cache, i.e.
+//     `go run` / `go test` produced it)
 //
-// During `go run` the executable lives under `/tmp/go-build*/exe/…`, which is
-// useless for config persistence — when we detect that, we fall back to cwd so
-// development still drops configs at the project root.
+// Result is cached and logged the first time it's resolved so first-run
+// behaviour is visible in startup logs.
 func ExecDir() string {
+	execDirOnce.Do(func() {
+		execDirVal, _ = resolveExecDir()
+		log.Printf("[paths] config base = %s", execDirVal)
+	})
+	return execDirVal
+}
+
+func resolveExecDir() (dir, source string) {
 	if v := strings.TrimSpace(os.Getenv("CONFIG_DIR")); v != "" {
-		return v
+		if abs, err := filepath.Abs(v); err == nil {
+			v = abs
+		}
+		return v, "CONFIG_DIR"
 	}
-	if exe, err := os.Executable(); err == nil {
-		if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+	if exe, err := os.Executable(); err == nil && exe != "" {
+		if resolved, err := filepath.EvalSymlinks(exe); err == nil && resolved != "" {
 			exe = resolved
 		}
 		d := filepath.Dir(exe)
 		if d != "" && !isGoBuildTempDir(d) {
-			return d
+			return d, "exe"
 		}
 	}
-	if wd, err := os.Getwd(); err == nil {
-		return wd
+	if wd, err := os.Getwd(); err == nil && wd != "" {
+		return wd, "cwd"
 	}
-	return "."
+	return ".", "fallback"
 }
 
 // isGoBuildTempDir reports whether the path looks like a Go toolchain build
-// cache used by `go run`/`go test` (e.g. /tmp/go-build3849.../b001/exe).
+// cache used by `go run`/`go test` (e.g. /tmp/go-build3849…/b001/exe on Linux,
+// C:\Users\xxx\AppData\Local\Temp\go-build…\exe on Windows). On Windows the
+// path separator check covers both "\\go-build" and "/go-build" since Go file
+// APIs sometimes return mixed slashes.
 func isGoBuildTempDir(dir string) bool {
 	tmp := os.TempDir()
 	if tmp != "" {
-		rel, err := filepath.Rel(tmp, dir)
-		if err == nil && !strings.HasPrefix(rel, "..") && strings.Contains(rel, "go-build") {
+		if rel, err := filepath.Rel(tmp, dir); err == nil && !strings.HasPrefix(rel, "..") && strings.Contains(rel, "go-build") {
 			return true
 		}
 	}
-	return strings.Contains(dir, string(os.PathSeparator)+"go-build")
+	return strings.Contains(dir, `\go-build`) || strings.Contains(dir, "/go-build")
 }
 
 func CallerFileLine(skip int) string {
