@@ -33,8 +33,12 @@ func defaultEnv() []byte {
 			"# 风控\n" +
 			"ROUNDNFC_TURNSTILE_SECRET=\n" +
 			"ROUNDNFC_RATELIMIT_PER_MIN=12\n\n" +
-			"# 后台账号（使用 cmd/genpw 生成 bcrypt 哈希；HASH 为空则后台禁用）\n" +
+			"# 后台账号。\n" +
+			"#   首选：直接填 _ADMIN_PASSWORD（明文），启动时会在内存里 bcrypt。\n" +
+			"#   公网部署可改填 _ADMIN_PASSWORD_HASH（用 cmd/genpw 生成），并把明文那行删掉。\n" +
+			"#   两者都设时 HASH 胜出。两者都空则后台禁用。\n" +
 			"ROUNDNFC_ADMIN_USERNAME=admin\n" +
+			"ROUNDNFC_ADMIN_PASSWORD=admin\n" +
 			"ROUNDNFC_ADMIN_PASSWORD_HASH=\n" +
 			"ROUNDNFC_JWT_SECRET=" + randHex(32) + "\n" +
 			"ROUNDNFC_JWT_TTL_HOURS=12\n\n" +

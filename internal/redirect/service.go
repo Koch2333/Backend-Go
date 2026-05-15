@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"backend-go/internal/auth/adminpw"
 	"backend-go/internal/authflow"
 	"backend-go/internal/redirect/storage"
 )
@@ -78,7 +79,7 @@ func loadAdminConfig() AdminConfig {
 	}
 	return AdminConfig{
 		Username:     username,
-		PasswordHash: strings.TrimSpace(os.Getenv("REDIRECT_ADMIN_PASSWORD_HASH")),
+		PasswordHash: adminpw.Resolve("redirect", "REDIRECT"),
 		JWTSecret:    []byte(strings.TrimSpace(os.Getenv("REDIRECT_JWT_SECRET"))),
 		JWTTTL:       ttl,
 		TOTPIssuer:   issuer,

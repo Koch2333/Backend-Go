@@ -29,8 +29,12 @@ func defaultEnv() []byte {
 			"REDIRECT_NOT_FOUND_URL=https://koch2333.cn/404?name={name}\n" +
 			"REDIRECT_NFC_REGISTERED_URL=https://koch2333.cn/pncs/ok?uid={userId}&hwid={hwid}\n" +
 			"REDIRECT_NFC_UNREGISTERED_URL=https://koch2333.cn/pncs/register?hwid={hwid}\n\n" +
-			"# 后台账号（使用 cmd/genpw 生成 bcrypt 哈希；HASH 为空则后台禁用）\n" +
+			"# 后台账号。\n" +
+			"#   首选：直接填 _ADMIN_PASSWORD（明文），启动时会在内存里 bcrypt。\n" +
+			"#   公网部署可改填 _ADMIN_PASSWORD_HASH（用 cmd/genpw 生成），并把明文那行删掉。\n" +
+			"#   两者都设时 HASH 胜出。两者都空则后台禁用。\n" +
 			"REDIRECT_ADMIN_USERNAME=admin\n" +
+			"REDIRECT_ADMIN_PASSWORD=admin\n" +
 			"REDIRECT_ADMIN_PASSWORD_HASH=\n" +
 			"REDIRECT_JWT_SECRET=" + randHex(32) + "\n" +
 			"REDIRECT_JWT_TTL_HOURS=12\n\n" +
