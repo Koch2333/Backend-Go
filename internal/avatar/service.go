@@ -5,17 +5,18 @@ import (
 	"crypto/md5" // #nosec G401: acceptable for content addressing
 	"encoding/hex"
 	"errors"
-	"github.com/chai2010/webp"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
-	_ "image/png"
+	"image/png"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	_ "golang.org/x/image/webp" // accept webp uploads (pure-Go decoder)
 )
 
 var ErrTooLarge = errors.New("avatar: file too large")
@@ -26,14 +27,14 @@ type Service struct {
 	Dir       string  // 保存目录
 	URLPrefix string  // 返回 URL 的前缀
 	MaxBytes  int64   // 单文件最大字节
-	Quality   float32 // webp 质量 0-100
+	Quality   float32 // 保留字段；当前编码使用无损 PNG，故此值未使用
 }
 
 func NewServiceFromEnv() (*Service, error) {
 	dir := getenv("AVATAR_DIR", "assets/avatar")
 	urlp := getenv("AVATAR_URL_PREFIX", "/assets/avatar")
 	maxMB, _ := strconv.Atoi(getenv("AVATAR_MAX_MB", "5"))
-	q, _ := strconv.Atoi(getenv("AVATAR_WEBP_QUALITY", "80"))
+	q, _ := strconv.Atoi(getenv("AVATAR_WEBP_QUALITY", "80")) // kept for env compatibility
 
 	// 确保目录存在
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -56,7 +57,7 @@ func getenv(k, def string) string {
 	return def
 }
 
-// ProcessAndStore: 读取 r（受限大小）-> 解码 -> 编码 WebP -> md5 命名 -> 落盘
+// ProcessAndStore: 读取 r（受限大小）-> 解码 -> 编码 PNG -> md5 命名 -> 落盘
 func (s *Service) ProcessAndStore(r io.Reader) (avatarID, filePath, url string, err error) {
 	// 读取并限制体积
 	var src bytes.Buffer
@@ -73,28 +74,23 @@ func (s *Service) ProcessAndStore(r io.Reader) (avatarID, filePath, url string, 
 		}
 	}
 
-	// 尝试通用解码（jpeg/png/gif）
+	// 通用解码（jpeg/png/gif/webp，webp 走 x/image 的纯 Go 解码器）
 	img, _, decErr := image.Decode(bytes.NewReader(src.Bytes()))
 	if decErr != nil {
-		// 再尝试 WebP 解码
-		if img2, err2 := webp.Decode(bytes.NewReader(src.Bytes())); err2 == nil {
-			img = img2
-		} else {
-			return "", "", "", decErr
-		}
+		return "", "", "", decErr
 	}
 
-	// 编码为 WebP
+	// 编码为 PNG（无损、纯 Go，无需 cgo）
 	var out bytes.Buffer
-	opt := &webp.Options{Lossless: false, Quality: s.Quality}
-	if err = webp.Encode(&out, img, opt); err != nil {
+	enc := png.Encoder{CompressionLevel: png.DefaultCompression}
+	if err = enc.Encode(&out, img); err != nil {
 		return "", "", "", err
 	}
 
-	// MD5 作为文件名 & avatarID（基于“编码后的字节”）
+	// MD5 作为文件名 & avatarID（基于"编码后的字节"）
 	sum := md5.Sum(out.Bytes()) // #nosec G401
 	avatarID = hex.EncodeToString(sum[:])
-	filename := avatarID + ".webp"
+	filename := avatarID + ".png"
 	filePath = filepath.Join(s.Dir, filename)
 
 	// 若文件不存在则写入（幂等）
