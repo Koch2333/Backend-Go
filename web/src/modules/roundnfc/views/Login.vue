@@ -6,6 +6,7 @@ import { extractMessage } from '@/shell/http'
 import { getCredential } from '@/shell/webauthn'
 import { login, beginPasskeyLogin, finishPasskeyLogin } from '../api'
 import { ROUNDNFC } from '../core'
+import BackendSwitcher from '@/shell/BackendSwitcher.vue'
 
 const form = reactive({ username: 'admin', password: '', totpCode: '' })
 const submitting = ref(false)
@@ -60,6 +61,8 @@ async function loginWithPasskey() {
       <p class="m3-body-medium text-on-surface-variant logo-sub">
         后台账号在 config/roundnfc/.env 里配置
       </p>
+
+      <BackendSwitcher module-name="roundnfc" class="backend-row" />
 
       <div class="fields">
         <md-outlined-text-field
@@ -151,7 +154,8 @@ async function loginWithPasskey() {
   text-align: center;
 }
 .logo-sub { text-align: center; margin-top: 4px; }
-.fields { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
+.backend-row { margin-top: 20px; }
+.fields { margin-top: 20px; display: flex; flex-direction: column; gap: 16px; }
 .actions { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
 md-outlined-text-field { width: 100%; }
 md-filled-button, md-outlined-button { width: 100%; }

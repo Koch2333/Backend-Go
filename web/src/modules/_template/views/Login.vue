@@ -5,6 +5,7 @@ import { showFailToast, showSuccessToast } from '@/shell/toast'
 import { extractMessage } from '@/shell/http'
 import { login } from '../api'
 import { M } from '../core'
+import BackendSwitcher from '@/shell/BackendSwitcher.vue'
 
 const form = reactive({ username: '', password: '' })
 const submitting = ref(false)
@@ -33,6 +34,8 @@ async function onSubmit() {
     <div class="login-blob blob-b" />
     <form class="m3-card login-card" @submit.prevent="onSubmit">
       <div class="logo m3-display-medium">Template</div>
+
+      <BackendSwitcher :module-name="M.name" class="backend-row" />
 
       <div class="fields">
         <md-outlined-text-field
@@ -110,7 +113,8 @@ async function onSubmit() {
   line-height: 44px;
   text-align: center;
 }
-.fields { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
+.backend-row { margin-top: 20px; }
+.fields { margin-top: 20px; display: flex; flex-direction: column; gap: 16px; }
 .actions { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
 md-outlined-text-field, md-filled-button { width: 100%; }
 </style>
