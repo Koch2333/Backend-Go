@@ -179,14 +179,27 @@ SPA 默认与后端同源（路径用相对的 `/api/...`）。如果你想把 S
 
 ### 7.1 单独构建 SPA
 
+**先决定 base path**：SPA 的资源 URL 和路由 base 都是构建时定的。
+
+| 想要的访问 URL | 构建命令 | 静态服务器需要 |
+| -------------- | -------- | -------------- |
+| `https://admin.example.com/admin/m/redirect/login` | `pnpm build`（默认 base `/admin/`） | `/admin/*` fallback 到 `/admin/index.html` |
+| `https://admin.example.com/m/redirect/login`（域名根挂载） | `VITE_BASE=/ pnpm build` | `/*` fallback 到 `/index.html` |
+
 ```bash
 cd web
 pnpm install --no-frozen-lockfile
-pnpm build
-# 产物目录：internal/adminui/dist/
+
+# 二选一
+pnpm build              # base = /admin/
+VITE_BASE=/ pnpm build  # base = /
+
+# 产物：internal/adminui/dist/
 ```
 
-把 `internal/adminui/dist/` 整个拷到任意静态托管处即可（Nginx、Cloudflare Pages、S3 + CloudFront、Vercel 等）。注意 SPA 的 base 是 `/admin/`，托管时记得把 `dist/` 内容挂在 `/admin/` 下，并配置 history fallback 把 `/admin/*` 都回退到 `/admin/index.html`。
+base 不匹配的典型症状：登录页能打开，但点登录后跳转 404，或资源（JS/CSS）整个加载失败。原因是路由 push 的路径会被加上 base 前缀，与静态服务器实际服务的路径对不上。挑一种、保持一致即可。
+
+把 `internal/adminui/dist/` 整个拷到任意静态托管处（Nginx、Cloudflare Pages、S3 + CloudFront、Vercel 等）。别忘了 SPA history fallback。
 
 ### 7.2 后端 CORS
 
