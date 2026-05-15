@@ -3,25 +3,33 @@ package envinit
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
-)
 
-const (
-	dirEmail      = "config/email"
-	baseEmailEnv  = "config/email/.env"
-	localEmailEnv = "config/email/local.env"
-	exampleBase   = "config/email/.env.example"
-	exampleLocal  = "config/email/local.env.example"
+	"backend-go/pkg/paths"
 )
 
 // Init：按约定生成示例、加载 env、规范化并输出安全日志。
 func Init() {
+	base := paths.ExecDir()
+	dirEmail := filepath.Join(base, "config/email")
+	baseEmailEnv := filepath.Join(dirEmail, ".env")
+	localEmailEnv := filepath.Join(dirEmail, "local.env")
+	exampleBase := filepath.Join(dirEmail, ".env.example")
+	exampleLocal := filepath.Join(dirEmail, "local.env.example")
+
 	// 1) 目录与示例文件
-	_ = os.MkdirAll(dirEmail, 0o755)
-	_ = writeIfNotExists(exampleBase, exampleBaseContent())
-	_ = writeIfNotExists(exampleLocal, exampleLocalContent())
+	if err := os.MkdirAll(dirEmail, 0o755); err != nil {
+		log.Printf("[email/envinit] mkdir %s: %v", dirEmail, err)
+	}
+	if err := writeIfNotExists(exampleBase, exampleBaseContent()); err != nil {
+		log.Printf("[email/envinit] write %s: %v", exampleBase, err)
+	}
+	if err := writeIfNotExists(exampleLocal, exampleLocalContent()); err != nil {
+		log.Printf("[email/envinit] write %s: %v", exampleLocal, err)
+	}
 
 	// 2) 加载 .env（仅在未设置时生效）
 	_ = loadDotenv(baseEmailEnv, false)

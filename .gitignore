@@ -1,6 +1,6 @@
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -26,10 +26,16 @@ go.work.sum
 .env.*
 config/aicweb/local.env
 config/redirect/local.env
+config/roundnfc/local.env
 databases/*.db
 databases/*/*.db
+
+# Object storage (RoundNFC 本地驱动)
+/storage/
 
 # Temporary files of auto imports
 autogen_imports.go
 
-
+# admin SPA 构建产物；dist 下仅保留 .gitkeep。
+internal/adminui/dist/*
+!internal/adminui/dist/.gitkeep

@@ -1,0 +1,1 @@
+# placeholder so go:embed in embed.go has at least one entry before web/ is built

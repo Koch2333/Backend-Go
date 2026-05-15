@@ -54,7 +54,7 @@ func (h *Handler) Get(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id required"})
 		return
 	}
-	fp := filepath.Join(h.svc.Dir, id+".webp")
+	fp := filepath.Join(h.svc.Dir, id+".png")
 	if _, err := os.Stat(fp); err != nil {
 		if os.IsNotExist(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})

@@ -20,7 +20,102 @@ func Open(dsn string) (*SQLite, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	if err := s.MigrateAuth(); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return s, nil
+}
+
+// ----- listing & deletion (admin) -----
+
+type Rule struct {
+	Name      string
+	TargetURL string
+	Enabled   bool
+	UpdatedAt time.Time
+}
+
+func (s *SQLite) ListRules(q string, limit, offset int) ([]Rule, int, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	args := []any{}
+	where := ""
+	if q != "" {
+		where = " WHERE name LIKE ? OR target_url LIKE ?"
+		args = append(args, "%"+q+"%", "%"+q+"%")
+	}
+	var total int
+	if err := s.DB.QueryRow(`SELECT COUNT(*) FROM redirect_rules`+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	args = append(args, limit, offset)
+	rows, err := s.DB.Query(`SELECT name, target_url, enabled, updated_at FROM redirect_rules`+where+` ORDER BY name LIMIT ? OFFSET ?`, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var out []Rule
+	for rows.Next() {
+		var r Rule
+		var e int
+		if err := rows.Scan(&r.Name, &r.TargetURL, &e, &r.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		r.Enabled = e == 1
+		out = append(out, r)
+	}
+	return out, total, nil
+}
+
+func (s *SQLite) DeleteRule(name string) error {
+	_, err := s.DB.Exec(`DELETE FROM redirect_rules WHERE name=?`, name)
+	return err
+}
+
+func (s *SQLite) ListCards(q string, limit, offset int) ([]NFCCard, int, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	args := []any{}
+	where := ""
+	if q != "" {
+		where = " WHERE hwid LIKE ? OR user_id LIKE ?"
+		args = append(args, "%"+q+"%", "%"+q+"%")
+	}
+	var total int
+	if err := s.DB.QueryRow(`SELECT COUNT(*) FROM nfc_cards`+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	args = append(args, limit, offset)
+	rows, err := s.DB.Query(`SELECT hwid, is_registered, user_id, updated_at FROM nfc_cards`+where+` ORDER BY updated_at DESC LIMIT ? OFFSET ?`, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var out []NFCCard
+	for rows.Next() {
+		var c NFCCard
+		var reg int
+		if err := rows.Scan(&c.HWID, &reg, &c.UserID, &c.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		c.IsRegistered = reg == 1
+		out = append(out, c)
+	}
+	return out, total, nil
+}
+
+func (s *SQLite) DeleteCard(hwid string) error {
+	_, err := s.DB.Exec(`DELETE FROM nfc_cards WHERE hwid=?`, hwid)
+	return err
 }
 
 func (s *SQLite) Close() error { return s.DB.Close() }

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+
+	"backend-go/pkg/paths"
 )
 
 const (
@@ -33,16 +35,7 @@ func defaultEnv() []byte {
 
 // Init: 在工作目录（失败回退可执行目录）创建 config/avatar/.env 并加载
 func Init() {
-	base, err := os.Getwd()
-	if err != nil || base == "" {
-		if exe, e := os.Executable(); e == nil {
-			base = filepath.Dir(exe)
-		}
-	}
-	if base == "" {
-		log.Printf("[avatar/envinit] base dir not found; skip init")
-		return
-	}
+	base := paths.ExecDir()
 
 	cfgDir := filepath.Join(base, dirName)
 	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
