@@ -141,6 +141,56 @@ function fmtDate(s: string) {
     <section class="m3-card p-6">
       <div class="section-head">
         <div>
+          <h2 class="m3-title-large text-on-surface">Passkey / 安全密钥</h2>
+          <p class="m3-body-medium text-on-surface-variant mt-1">
+            指纹、Face ID、YubiKey 等都可作为登录凭证，跨域部署时尤其推荐。
+          </p>
+        </div>
+        <md-filled-button v-if="passkeys.length > 0" @click="addDialog?.show()">
+          <md-icon slot="icon">add</md-icon>
+          添加
+        </md-filled-button>
+      </div>
+
+      <div v-if="passkeys.length === 0" class="passkey-empty">
+        <div class="passkey-empty-icon"><md-icon>key</md-icon></div>
+        <div class="m3-title-medium text-on-surface passkey-empty-title">
+          为这个账号创建第一个 Passkey
+        </div>
+        <div class="m3-body-medium text-on-surface-variant passkey-empty-body">
+          无需密码 · 一键登录 · TouchID / FaceID / USB key 都可以。
+        </div>
+        <md-filled-button class="passkey-empty-btn" @click="addDialog?.show()">
+          <md-icon slot="icon">add</md-icon>
+          创建 Passkey
+        </md-filled-button>
+      </div>
+
+      <md-list v-else class="mt-2">
+        <template v-for="(pk, i) in passkeys" :key="pk.id">
+          <md-divider v-if="i > 0" />
+          <md-list-item>
+            <md-icon slot="start" class="row-icon">key</md-icon>
+            <div slot="headline" class="m3-title-medium">{{ pk.name }}</div>
+            <div slot="supporting-text" class="m3-body-medium">
+              添加于 {{ fmtDate(pk.createdAt) }}
+            </div>
+            <md-icon-button
+              slot="end"
+              :disabled="passkeyWorking"
+              aria-label="删除"
+              @click="handleDeletePasskey(pk.id)"
+            >
+              <md-icon>delete</md-icon>
+            </md-icon-button>
+          </md-list-item>
+        </template>
+      </md-list>
+    </section>
+
+    <section class="m3-card p-6">
+      <div class="section-head">
+        <div>
           <h2 class="m3-title-large text-on-surface">动态验证码 (TOTP)</h2>
           <p class="m3-body-medium text-on-surface-variant mt-1">
             登录时除密码外再输入 6 位动态码。
@@ -191,50 +241,6 @@ function fmtDate(s: string) {
       </div>
     </section>
 
-    <section class="m3-card p-6">
-      <div class="section-head">
-        <div>
-          <h2 class="m3-title-large text-on-surface">Passkey / 安全密钥</h2>
-          <p class="m3-body-medium text-on-surface-variant mt-1">
-            指纹、Face ID、YubiKey 等都可作为登录凭证。
-          </p>
-        </div>
-        <md-filled-button @click="addDialog?.show()">
-          <md-icon slot="icon">add</md-icon>
-          添加
-        </md-filled-button>
-      </div>
-
-      <div v-if="passkeys.length === 0" class="m3-empty pt-4 pb-2">
-        <div class="m3-empty-icon"><md-icon>key</md-icon></div>
-        <div class="m3-title-medium text-on-surface">尚未添加 Passkey</div>
-        <div class="m3-body-medium text-on-surface-variant">
-          点击右上角「添加」开始注册。
-        </div>
-      </div>
-
-      <md-list v-else class="mt-2">
-        <template v-for="(pk, i) in passkeys" :key="pk.id">
-          <md-divider v-if="i > 0" />
-          <md-list-item>
-            <md-icon slot="start" class="row-icon">key</md-icon>
-            <div slot="headline" class="m3-title-medium">{{ pk.name }}</div>
-            <div slot="supporting-text" class="m3-body-medium">
-              添加于 {{ fmtDate(pk.createdAt) }}
-            </div>
-            <md-icon-button
-              slot="end"
-              :disabled="passkeyWorking"
-              aria-label="删除"
-              @click="handleDeletePasskey(pk.id)"
-            >
-              <md-icon>delete</md-icon>
-            </md-icon-button>
-          </md-list-item>
-        </template>
-      </md-list>
-    </section>
-
     <md-dialog ref="addDialog">
       <div slot="headline">添加 Passkey</div>
       <form slot="content" id="add-passkey-form" method="dialog" class="dialog-form">
@@ -275,6 +281,28 @@ function fmtDate(s: string) {
   color: var(--md-sys-color-on-surface);
 }
 .row-icon { color: var(--md-sys-color-primary); }
+.passkey-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 12px 12px;
+  gap: 12px;
+}
+.passkey-empty-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+.passkey-empty-icon md-icon { font-size: 36px; }
+.passkey-empty-title { margin-top: 4px; }
+.passkey-empty-body { max-width: 360px; }
+.passkey-empty-btn { margin-top: 8px; }
 .dialog-form { padding-top: 8px; }
 .dialog-form md-outlined-text-field { width: 100%; }
 md-outlined-text-field { width: 100%; }

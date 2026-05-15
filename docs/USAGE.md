@@ -28,7 +28,7 @@ internal/adminui/dist/  # web 构建产物，server 启动时通过 embed.FS 内
 1. 优先用 `CONFIG_DIR`；
 2. 否则取 `os.Executable()` 的目录；
 3. 但如果该目录在 `/tmp/.../go-build…/` 里（即 `go run` 临时编译产物），认为是开发环境，退回 `os.Getwd()`；
-4. 最终兑底返回 `.`。
+4. 最终兜底返回 `.`。
 
 涉及的模块：`avatar / email / redirect / rhythmgames / roundnfc / integrations/aicweb`。
 
@@ -67,7 +67,7 @@ go generate ./internal/bootstrap/mod
 go build -o bin/server ./cmd/server
 ```
 
-CI（`.github/workflows/build.yml`）已经替你完成上面所有步骤，并把 `web-dist` 和成品二进制都作为构建产物保留 30 天。
+CI（`.github/workflows/build.yml`）已经替你完成上面所有步骤，并把 `web-dist` 和成品二进制都作为构建产物保留30 天。
 
 ### 3.2 单独的 RoundNFC
 
@@ -79,7 +79,7 @@ go build -o bin/roundnfc ./cmd/roundnfc
 
 ```bash
 go run ./cmd/genpw "your-password"
-# 把输出粘到 config/<mod>/.env 里的 *_ADMIN_PASSWORD_HASH
+# 把输出粘到 config/<module>/.env 里的 *_ADMIN_PASSWORD_HASH
 ```
 
 ## 4. 后台 UI（Material 3）
@@ -172,3 +172,54 @@ A：在 `web/src/shell/m3.ts` 里 `import '@material/web/<dir>/<name>.js'`，模
 
 **Q：Vue 警告 "unknown custom element: md-…"？**
 A：`web/vite.config.ts` 里 `compilerOptions.isCustomElement = (tag) => tag.startsWith('md-')` 已经处理。如果新增了别的前缀，扩展这里即可。
+
+## 7. 把 SPA 单独部署
+
+SPA 默认与后端同源（路径用相对的 `/api/...`）。如果你想把 SPA 放在 `admin.example.com`、后端放在 `api.example.com`，按下面来。
+
+### 7.1 单独构建 SPA
+
+```bash
+cd web
+pnpm install --no-frozen-lockfile
+pnpm build
+# 产物目录：internal/adminui/dist/
+```
+
+把 `internal/adminui/dist/` 整个拷到任意静态托管处即可（Nginx、Cloudflare Pages、S3 + CloudFront、Vercel 等）。注意 SPA 的 base 是 `/admin/`，托管时记得把 `dist/` 内容挂在 `/admin/` 下，并配置 history fallback 把 `/admin/*` 都回退到 `/admin/index.html`。
+
+### 7.2 后端 CORS
+
+后端已经支持配置 CORS，在运行环境里设置：
+
+```bash
+HTTP_CORS_ORIGINS=https://admin.example.com
+HTTP_CORS_CREDENTIALS=true
+```
+
+多个来源用逗号分隔。需要带 cookie 的话保持 `HTTP_CORS_CREDENTIALS=true`。
+
+### 7.3 WebAuthn / Passkey 关键警告
+
+WebAuthn 凭证是绑死在 **SPA 的 origin** 上的，不是后端的。所以跨域部署时，必须把后端的 RP ID / Origins 改成 SPA 的域名：
+
+```bash
+# 以 redirect 模块为例（roundnfc 同理）
+REDIRECT_WEBAUTHN_RPID=admin.example.com
+REDIRECT_WEBAUTHN_ORIGINS=https://admin.example.com
+```
+
+**不改的话**，浏览器会直接报：
+
+> `SecurityError: The relying party ID is not a registrable domain suffix of, nor equal to the current document's domain.`
+
+注册和登录都会失败。
+
+### 7.4 用户怎么切后端
+
+两种方式：
+
+1. **登录页右上角**：每个模块的登录页顶部有一行「连接到：…」，点旁边的铅笔，把后端 base URL（如 `https://api.example.com`）粘进去保存即可。留空表示同源。
+2. **URL 参数**：用 `?api=https://api.example.com` 打开登录页，参数会被持久化到 localStorage（key：`roast.<module>.apiBase`），然后从 URL 里清掉。
+
+切换是按模块独立保存的，redirect 和 roundnfc 互不影响。
