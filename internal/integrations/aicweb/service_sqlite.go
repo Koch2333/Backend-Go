@@ -44,6 +44,10 @@ func NewServiceSQLiteFromEnv() (Service, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	if err := migrateProfileColumns(db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return &sqliteService{db: db, tokens: map[string]string{}}, nil
 }
 

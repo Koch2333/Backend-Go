@@ -3,25 +3,30 @@ package aicweb
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 )
 
 // PublicProfile is the publicly visible profile of a user.
 type PublicProfile struct {
-	Username    string    `json:"username"`
-	DisplayName string    `json:"displayName"`
-	Bio         string    `json:"bio"`
-	GitHubName  string    `json:"githubName"`
-	BilibiliUID string    `json:"bilibiliUid"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	Username              string    `json:"username"`
+	DisplayName           string    `json:"displayName"`
+	Bio                   string    `json:"bio"`
+	GitHubName            string    `json:"githubName"`
+	BilibiliUID           string    `json:"bilibiliUid"`
+	MessageToSchool       string    `json:"messageToSchool"`
+	MessageToUnderclassmen string   `json:"messageToUnderclassmen"`
+	UpdatedAt             time.Time `json:"updatedAt"`
 }
 
 // ProfileUpdate is the writable portion of a user's profile.
 type ProfileUpdate struct {
-	DisplayName string `json:"displayName"`
-	Bio         string `json:"bio"`
-	GitHubName  string `json:"githubName"`
-	BilibiliUID string `json:"bilibiliUid"`
+	DisplayName           string `json:"displayName"`
+	Bio                   string `json:"bio"`
+	GitHubName            string `json:"githubName"`
+	BilibiliUID           string `json:"bilibiliUid"`
+	MessageToSchool       string `json:"messageToSchool"`
+	MessageToUnderclassmen string `json:"messageToUnderclassmen"`
 }
 
 // ProfileService is optionally implemented by Service backends that
@@ -37,12 +42,14 @@ var _ ProfileService = (*sqliteService)(nil)
 
 const profileDDL = `
 CREATE TABLE IF NOT EXISTS user_profiles (
-    user_id      TEXT PRIMARY KEY,
-    display_name TEXT NOT NULL DEFAULT '',
-    bio          TEXT NOT NULL DEFAULT '',
-    github_name  TEXT NOT NULL DEFAULT '',
-    bilibili_uid TEXT NOT NULL DEFAULT '',
-    updated_at   DATETIME NOT NULL,
+    user_id                TEXT PRIMARY KEY,
+    display_name           TEXT NOT NULL DEFAULT '',
+    bio                    TEXT NOT NULL DEFAULT '',
+    github_name            TEXT NOT NULL DEFAULT '',
+    bilibili_uid           TEXT NOT NULL DEFAULT '',
+    message_to_school      TEXT NOT NULL DEFAULT '',
+    message_to_underclassmen TEXT NOT NULL DEFAULT '',
+    updated_at             DATETIME NOT NULL,
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
 CREATE INDEX IF NOT EXISTS idx_user_profiles_uid ON user_profiles(user_id);
@@ -53,8 +60,24 @@ func migrateProfiles(db *sql.DB) error {
 	return err
 }
 
+// migrateProfileColumns adds columns introduced after the initial schema.
+// SQLite has no ADD COLUMN IF NOT EXISTS, so we ignore "duplicate column" errors.
+func migrateProfileColumns(db *sql.DB) error {
+	alters := []string{
+		`ALTER TABLE user_profiles ADD COLUMN message_to_school TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE user_profiles ADD COLUMN message_to_underclassmen TEXT NOT NULL DEFAULT ''`,
+	}
+	for _, stmt := range alters {
+		if _, err := db.Exec(stmt); err != nil {
+			if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // parseDBTime tries to parse a datetime string stored by modernc.org/sqlite.
-// The driver stores time.Time as RFC3339Nano; fall back to other common formats.
 func parseDBTime(s string) time.Time {
 	formats := []string{
 		time.RFC3339Nano,
@@ -78,6 +101,8 @@ func (s *sqliteService) ListPublicProfiles(ctx context.Context) ([]PublicProfile
 		       COALESCE(p.bio, ''),
 		       COALESCE(p.github_name, ''),
 		       COALESCE(p.bilibili_uid, ''),
+		       COALESCE(p.message_to_school, ''),
+		       COALESCE(p.message_to_underclassmen, ''),
 		       CAST(COALESCE(p.updated_at, u.created_at) AS TEXT)
 		FROM users u
 		LEFT JOIN user_profiles p ON p.user_id = u.id
@@ -92,7 +117,10 @@ func (s *sqliteService) ListPublicProfiles(ctx context.Context) ([]PublicProfile
 	for rows.Next() {
 		var p PublicProfile
 		var updatedAt string
-		if err := rows.Scan(&p.Username, &p.DisplayName, &p.Bio, &p.GitHubName, &p.BilibiliUID, &updatedAt); err != nil {
+		if err := rows.Scan(
+			&p.Username, &p.DisplayName, &p.Bio, &p.GitHubName, &p.BilibiliUID,
+			&p.MessageToSchool, &p.MessageToUnderclassmen, &updatedAt,
+		); err != nil {
 			return nil, err
 		}
 		p.UpdatedAt = parseDBTime(updatedAt)
@@ -108,6 +136,8 @@ func (s *sqliteService) GetPublicProfile(ctx context.Context, username string) (
 		       COALESCE(p.bio, ''),
 		       COALESCE(p.github_name, ''),
 		       COALESCE(p.bilibili_uid, ''),
+		       COALESCE(p.message_to_school, ''),
+		       COALESCE(p.message_to_underclassmen, ''),
 		       CAST(COALESCE(p.updated_at, u.created_at) AS TEXT)
 		FROM users u
 		LEFT JOIN user_profiles p ON p.user_id = u.id
@@ -115,7 +145,10 @@ func (s *sqliteService) GetPublicProfile(ctx context.Context, username string) (
 	`, username)
 	var p PublicProfile
 	var updatedAt string
-	if err := row.Scan(&p.Username, &p.DisplayName, &p.Bio, &p.GitHubName, &p.BilibiliUID, &updatedAt); err != nil {
+	if err := row.Scan(
+		&p.Username, &p.DisplayName, &p.Bio, &p.GitHubName, &p.BilibiliUID,
+		&p.MessageToSchool, &p.MessageToUnderclassmen, &updatedAt,
+	); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -127,14 +160,17 @@ func (s *sqliteService) GetPublicProfile(ctx context.Context, username string) (
 
 func (s *sqliteService) UpdateMyProfile(ctx context.Context, userID string, update ProfileUpdate) error {
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO user_profiles(user_id, display_name, bio, github_name, bilibili_uid, updated_at)
-		VALUES(?, ?, ?, ?, ?, ?)
+		INSERT INTO user_profiles(user_id, display_name, bio, github_name, bilibili_uid, message_to_school, message_to_underclassmen, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(user_id) DO UPDATE SET
-		    display_name = excluded.display_name,
-		    bio          = excluded.bio,
-		    github_name  = excluded.github_name,
-		    bilibili_uid = excluded.bilibili_uid,
-		    updated_at   = excluded.updated_at
-	`, userID, update.DisplayName, update.Bio, update.GitHubName, update.BilibiliUID, time.Now().UTC())
+		    display_name             = excluded.display_name,
+		    bio                      = excluded.bio,
+		    github_name              = excluded.github_name,
+		    bilibili_uid             = excluded.bilibili_uid,
+		    message_to_school        = excluded.message_to_school,
+		    message_to_underclassmen = excluded.message_to_underclassmen,
+		    updated_at               = excluded.updated_at
+	`, userID, update.DisplayName, update.Bio, update.GitHubName, update.BilibiliUID,
+		update.MessageToSchool, update.MessageToUnderclassmen, time.Now().UTC())
 	return err
 }
