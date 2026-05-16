@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,10 +17,12 @@ type Handler struct {
 	ts     TurnstileVerifier
 	fs     FormService
 	notify ActivationNotifier
+	avt    MediaUploader // nil = avatar upload disabled
+	bnr    MediaUploader // nil = banner upload disabled
 }
 
-func NewHandler(svc Service, ts TurnstileVerifier, fs FormService, notify ActivationNotifier) *Handler {
-	return &Handler{svc: svc, ts: ts, fs: fs, notify: notify}
+func NewHandler(svc Service, ts TurnstileVerifier, fs FormService, notify ActivationNotifier, avt, bnr MediaUploader) *Handler {
+	return &Handler{svc: svc, ts: ts, fs: fs, notify: notify, avt: avt, bnr: bnr}
 }
 
 // ---- Turnstile 适配 ----
@@ -33,6 +37,16 @@ type activationCreator interface {
 }
 type activationActivator interface {
 	ActivateByToken(ctx context.Context, token string) error
+}
+
+// openUploadReader returns a reader for the uploaded file, supporting both
+// multipart/form-data (field name: "file") and raw binary body.
+func openUploadReader(c *gin.Context) (io.ReadCloser, error) {
+	if strings.HasPrefix(c.GetHeader("Content-Type"), "multipart/form-data") {
+		f, _, err := c.Request.FormFile("file")
+		return f, err
+	}
+	return c.Request.Body, nil
 }
 
 // ---- 注册 ----
@@ -170,12 +184,83 @@ func (h *Handler) UpdateMyProfile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, NewFail(ErrBadRequest, nil))
 		return
 	}
+	// Preserve avatarUrl/bannerUrl — they are set only via dedicated upload endpoints.
+	if existing, err := ps.GetPublicProfile(c.Request.Context(), u.Username); err == nil && existing != nil {
+		update.AvatarUrl = existing.AvatarUrl
+		update.BannerUrl = existing.BannerUrl
+	}
 	if err := ps.UpdateMyProfile(c.Request.Context(), u.ID, update); err != nil {
 		c.JSON(http.StatusInternalServerError, NewFail(ErrInternalServerError, nil))
 		return
 	}
 	profile, _ := ps.GetPublicProfile(c.Request.Context(), u.Username)
 	c.JSON(http.StatusOK, NewOK(profile))
+}
+
+// ---- 上传头像（需登录）----
+func (h *Handler) UploadAvatar(c *gin.Context) {
+	if h.avt == nil {
+		c.JSON(http.StatusNotImplemented, NewFail(ErrInternalServerError, nil))
+		return
+	}
+	u := c.MustGet(ctxUserKey).(*user)
+	ps, ok := h.svc.(ProfileService)
+	if !ok {
+		c.JSON(http.StatusServiceUnavailable, NewFail(ErrInternalServerError, nil))
+		return
+	}
+	r, err := openUploadReader(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, NewFail(ErrBadRequest, map[string]any{"reason": "file missing"}))
+		return
+	}
+	defer r.Close()
+	url, err := h.avt.Upload(r)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	existing, _ := ps.GetPublicProfile(c.Request.Context(), u.Username)
+	update := profileFromExisting(existing)
+	update.AvatarUrl = url
+	if err := ps.UpdateMyProfile(c.Request.Context(), u.ID, update); err != nil {
+		c.JSON(http.StatusInternalServerError, NewFail(ErrInternalServerError, nil))
+		return
+	}
+	c.JSON(http.StatusOK, NewOK(map[string]string{"url": url}))
+}
+
+// ---- 上传横幅（需登录）----
+func (h *Handler) UploadBanner(c *gin.Context) {
+	if h.bnr == nil {
+		c.JSON(http.StatusNotImplemented, NewFail(ErrInternalServerError, nil))
+		return
+	}
+	u := c.MustGet(ctxUserKey).(*user)
+	ps, ok := h.svc.(ProfileService)
+	if !ok {
+		c.JSON(http.StatusServiceUnavailable, NewFail(ErrInternalServerError, nil))
+		return
+	}
+	r, err := openUploadReader(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, NewFail(ErrBadRequest, map[string]any{"reason": "file missing"}))
+		return
+	}
+	defer r.Close()
+	url, err := h.bnr.Upload(r)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	existing, _ := ps.GetPublicProfile(c.Request.Context(), u.Username)
+	update := profileFromExisting(existing)
+	update.BannerUrl = url
+	if err := ps.UpdateMyProfile(c.Request.Context(), u.ID, update); err != nil {
+		c.JSON(http.StatusInternalServerError, NewFail(ErrInternalServerError, nil))
+		return
+	}
+	c.JSON(http.StatusOK, NewOK(map[string]string{"url": url}))
 }
 
 // ---- 表单提交 ----
@@ -190,6 +275,26 @@ func (h *Handler) SubmitForm(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, NewFail(ErrInternalServerError, nil))
 		return
 	}
+
+	// Sync messageToSchool / messageToUnderclassmen from form to public profile.
+	if ps, ok := h.svc.(ProfileService); ok {
+		var msgs struct {
+			MessageToSchool        string `json:"messageToSchool"`
+			MessageToUnderclassmen string `json:"messageToUnderclassmen"`
+		}
+		if json.Unmarshal(payload, &msgs) == nil {
+			existing, _ := ps.GetPublicProfile(c.Request.Context(), u.Username)
+			update := profileFromExisting(existing)
+			if msgs.MessageToSchool != "" {
+				update.MessageToSchool = msgs.MessageToSchool
+			}
+			if msgs.MessageToUnderclassmen != "" {
+				update.MessageToUnderclassmen = msgs.MessageToUnderclassmen
+			}
+			_ = ps.UpdateMyProfile(c.Request.Context(), u.ID, update)
+		}
+	}
+
 	c.JSON(http.StatusOK, NewOK(map[string]any{"ok": true}))
 }
 
