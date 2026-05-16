@@ -53,6 +53,24 @@ func migrateProfiles(db *sql.DB) error {
 	return err
 }
 
+// parseDBTime tries to parse a datetime string stored by modernc.org/sqlite.
+// The driver stores time.Time as RFC3339Nano; fall back to other common formats.
+func parseDBTime(s string) time.Time {
+	formats := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02T15:04:05Z",
+		"2006-01-02 15:04:05.999999999-07:00",
+		"2006-01-02 15:04:05",
+	}
+	for _, f := range formats {
+		if t, err := time.Parse(f, s); err == nil {
+			return t.UTC()
+		}
+	}
+	return time.Time{}
+}
+
 func (s *sqliteService) ListPublicProfiles(ctx context.Context) ([]PublicProfile, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT u.username,
@@ -60,7 +78,7 @@ func (s *sqliteService) ListPublicProfiles(ctx context.Context) ([]PublicProfile
 		       COALESCE(p.bio, ''),
 		       COALESCE(p.github_name, ''),
 		       COALESCE(p.bilibili_uid, ''),
-		       COALESCE(p.updated_at, u.created_at)
+		       CAST(COALESCE(p.updated_at, u.created_at) AS TEXT)
 		FROM users u
 		LEFT JOIN user_profiles p ON p.user_id = u.id
 		WHERE u.is_registered = 1
@@ -73,9 +91,11 @@ func (s *sqliteService) ListPublicProfiles(ctx context.Context) ([]PublicProfile
 	var out []PublicProfile
 	for rows.Next() {
 		var p PublicProfile
-		if err := rows.Scan(&p.Username, &p.DisplayName, &p.Bio, &p.GitHubName, &p.BilibiliUID, &p.UpdatedAt); err != nil {
+		var updatedAt string
+		if err := rows.Scan(&p.Username, &p.DisplayName, &p.Bio, &p.GitHubName, &p.BilibiliUID, &updatedAt); err != nil {
 			return nil, err
 		}
+		p.UpdatedAt = parseDBTime(updatedAt)
 		out = append(out, p)
 	}
 	return out, rows.Err()
@@ -88,18 +108,20 @@ func (s *sqliteService) GetPublicProfile(ctx context.Context, username string) (
 		       COALESCE(p.bio, ''),
 		       COALESCE(p.github_name, ''),
 		       COALESCE(p.bilibili_uid, ''),
-		       COALESCE(p.updated_at, u.created_at)
+		       CAST(COALESCE(p.updated_at, u.created_at) AS TEXT)
 		FROM users u
 		LEFT JOIN user_profiles p ON p.user_id = u.id
 		WHERE u.username = ? AND u.is_registered = 1
 	`, username)
 	var p PublicProfile
-	if err := row.Scan(&p.Username, &p.DisplayName, &p.Bio, &p.GitHubName, &p.BilibiliUID, &p.UpdatedAt); err != nil {
+	var updatedAt string
+	if err := row.Scan(&p.Username, &p.DisplayName, &p.Bio, &p.GitHubName, &p.BilibiliUID, &updatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 		return nil, err
 	}
+	p.UpdatedAt = parseDBTime(updatedAt)
 	return &p, nil
 }
 
