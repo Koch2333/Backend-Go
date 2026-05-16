@@ -40,6 +40,10 @@ func NewServiceSQLiteFromEnv() (Service, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	if err := migrateProfiles(db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return &sqliteService{db: db, tokens: map[string]string{}}, nil
 }
 
@@ -109,7 +113,6 @@ func (s *sqliteService) Login(ctx context.Context, req *LoginRequest) (string, e
 	if err := s.db.QueryRow(q, arg).Scan(&row.id, &row.email, &row.username, &row.hash, &row.isReg, &row.created); err != nil {
 		return "", ErrUnauthorized
 	}
-	// ★ 未激活：给上层一个可判别的错误
 	if row.isReg == 0 {
 		return "", ErrNotActivated
 	}
@@ -142,7 +145,6 @@ func (s *sqliteService) Validate(ctx context.Context, token string) (*user, erro
 	return &user{ID: row.id, Username: row.username, Email: email, CreatedAt: row.created}, nil
 }
 
-// 激活：生成 token / 激活用户（保持不变）
 func (s *sqliteService) CreateActivationToken(ctx context.Context, email string) (string, error) {
 	var uid string
 	if err := s.db.QueryRow(`SELECT id FROM users WHERE email=?`, email).Scan(&uid); err != nil {
