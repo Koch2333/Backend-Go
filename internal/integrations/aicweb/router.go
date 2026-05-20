@@ -1,19 +1,60 @@
 package aicweb
 
 import (
-	"backend-go/internal/integrations/msconsent"
+	"io"
 	"os"
+	"strconv"
+	"strings"
 
+	av "backend-go/internal/avatar"
 	em "backend-go/internal/email"
 	emenv "backend-go/internal/email/envinit"
 	"backend-go/internal/integrations/aicweb/envinit"
+	"backend-go/internal/integrations/msconsent"
 
 	"github.com/gin-gonic/gin"
 )
 
-// 只负责把 handler 挂到传入分组上
-func Mount(r *gin.RouterGroup) {
-	// 账号服务：优先 SQLite，失败回退内存实现
+// mediaAdapter wraps avatar.Service to implement MediaUploader.
+type mediaAdapter struct{ svc *av.Service }
+
+func (m *mediaAdapter) Upload(r io.Reader) (string, error) {
+	_, _, url, err := m.svc.ProcessAndStore(r)
+	return url, err
+}
+
+func newBannerService() (*av.Service, error) {
+	dir := envOr("BANNER_DIR", "assets/banner")
+	urlp := envOr("BANNER_URL_PREFIX", "/assets/banner")
+	maxMB := envIntOr("BANNER_MAX_MB", 15)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, err
+	}
+	return &av.Service{
+		Dir:      dir,
+		URLPrefix: urlp,
+		MaxBytes: int64(maxMB) * (1 << 20),
+	}, nil
+}
+
+func envOr(key, def string) string {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		return v
+	}
+	return def
+}
+
+func envIntOr(key string, def int) int {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return def
+}
+
+// Mount 把所有路由挂到传入的 RouterGroup 上。
+func Mount(engine *gin.Engine, r *gin.RouterGroup) {
 	var svc Service
 	if s, err := NewServiceSQLiteFromEnv(); err == nil {
 		svc = s
@@ -28,28 +69,47 @@ func Mount(r *gin.RouterGroup) {
 		panic("failed to init sqlite form service: " + err.Error())
 	}
 
-	// 邮件策略（独立 email 模块）
 	emenv.Init()
 	sender := em.NewSenderFromEnv()
 	notify := NewEmailActivationNotifierFromEnv(sender)
 
-	h := NewHandler(svc, ts, fs, notify)
+	// Avatar uploader (reuses existing avatar module service).
+	avtSvc, _ := av.NewServiceFromEnv()
+	var avt MediaUploader
+	if avtSvc != nil {
+		engine.StaticFS(avtSvc.URLPrefix, gin.Dir(avtSvc.Dir, false))
+		avt = &mediaAdapter{svc: avtSvc}
+	}
+
+	// Banner uploader (separate dir/size limits).
+	bnrSvc, _ := newBannerService()
+	var bnr MediaUploader
+	if bnrSvc != nil {
+		engine.StaticFS(bnrSvc.URLPrefix, gin.Dir(bnrSvc.Dir, false))
+		bnr = &mediaAdapter{svc: bnrSvc}
+	}
+
+	h := NewHandler(svc, ts, fs, notify, avt, bnr)
 
 	// 公共路由
 	r.POST("/user/register", h.Register)
 	r.POST("/user/login", h.Login)
 	r.GET("/user/activate", h.Activate)
+	r.GET("/user/profiles", h.ListProfiles)
+	r.GET("/user/profile/:username", h.GetPublicProfile)
 
 	// 受保护路由
 	prv := r.Group("", AuthRequired(svc))
 	{
 		prv.GET("/user/profile", h.Profile)
+		prv.PUT("/user/me/profile", h.UpdateMyProfile)
+		prv.PUT("/user/me/avatar", h.UploadAvatar)
+		prv.PUT("/user/me/banner", h.UploadBanner)
 		prv.POST("/user/form", h.SubmitForm)
 		prv.GET("/user/form", h.ListMyForms)
 	}
 }
 
-// 兼容旧用法：读取环境变量前缀并挂载
 func Attach(engine *gin.Engine) {
 	envinit.Init()
 	base := os.Getenv("AICWEB_BASE_PREFIX")
@@ -59,13 +119,12 @@ func Attach(engine *gin.Engine) {
 	AttachTo(engine, base)
 }
 
-// ★ 提供给自动挂载框架使用：可指定任意前缀
 func AttachTo(engine *gin.Engine, prefix string) {
 	envinit.Init()
 	if prefix == "" {
 		prefix = "/api/aicweb"
 	}
 	grp := engine.Group(prefix)
-	Mount(grp)
+	Mount(engine, grp)
 	msconsent.Attach(engine)
 }
