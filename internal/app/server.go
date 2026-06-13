@@ -15,11 +15,12 @@ import (
 )
 
 type Config struct {
-	Addr         string   // 监听地址（默认 :8080）
-	CORSOrigins  []string // 允许的跨域源
-	AllowCreds   bool     // 是否允许携带凭据
-	AllowHeaders []string // 允许的自定义头
-	AdminPrefix  string   // 后台 SPA 挂载路径（默认 /admin）
+	Addr            string   // 监听地址（默认 :8080）
+	CORSOrigins     []string // 允许的跨域源
+	AllowAllOrigins bool     // 允许所有源（未配置 HTTP_CORS_ORIGINS 时默认开启）
+	AllowCreds      bool     // 是否允许携带凭据
+	AllowHeaders    []string // 允许的自定义头
+	AdminPrefix     string   // 后台 SPA 挂载路径（默认 /admin）
 }
 
 func loadConfig() Config {
@@ -28,7 +29,10 @@ func loadConfig() Config {
 		addr = ":8080"
 	}
 	var origins []string
-	if v := strings.TrimSpace(os.Getenv("HTTP_CORS_ORIGINS")); v != "" {
+	allowAll := false
+	if v := strings.TrimSpace(os.Getenv("HTTP_CORS_ORIGINS")); v == "*" {
+		allowAll = true
+	} else if v != "" {
 		for _, p := range strings.Split(v, ",") {
 			p = strings.TrimSpace(p)
 			if p != "" {
@@ -36,13 +40,8 @@ func loadConfig() Config {
 			}
 		}
 	} else {
-		origins = []string{
-			"http://localhost:5173",
-			"http://localhost:5174",
-			"http://localhost:3000",
-			"http://127.0.0.1:3000",
-			"https://koch2333.cn",
-		}
+		allowAll = true
+		log.Println("[cors] HTTP_CORS_ORIGINS not set, allowing all origins. Set it in production!")
 	}
 	allowCreds := true
 	if v := strings.TrimSpace(os.Getenv("HTTP_CORS_CREDENTIALS")); v != "" {
@@ -63,11 +62,12 @@ func loadConfig() Config {
 		adminPrefix = "/admin"
 	}
 	return Config{
-		Addr:         addr,
-		CORSOrigins:  origins,
-		AllowCreds:   allowCreds,
-		AllowHeaders: allowHeaders,
-		AdminPrefix:  adminPrefix,
+		Addr:            addr,
+		CORSOrigins:     origins,
+		AllowAllOrigins: allowAll,
+		AllowCreds:      allowCreds,
+		AllowHeaders:    allowHeaders,
+		AdminPrefix:     adminPrefix,
 	}
 }
 
@@ -81,14 +81,18 @@ func Run(version, commit, build string) {
 	engine := gin.New()
 	engine.Use(gin.Logger(), gin.Recovery())
 
-	c := cors.DefaultConfig()
-	c.AllowOrigins = cfg.CORSOrigins
-	c.AllowCredentials = cfg.AllowCreds
-	for _, h := range cfg.AllowHeaders {
-		c.AddAllowHeaders(h)
+	corsCfg := cors.DefaultConfig()
+	if cfg.AllowAllOrigins {
+		corsCfg.AllowOriginFunc = func(_ string) bool { return true }
+	} else {
+		corsCfg.AllowOrigins = cfg.CORSOrigins
 	}
-	c.MaxAge = 12 * time.Hour
-	engine.Use(cors.New(c))
+	corsCfg.AllowCredentials = cfg.AllowCreds
+	for _, h := range cfg.AllowHeaders {
+		corsCfg.AddAllowHeaders(h)
+	}
+	corsCfg.MaxAge = 12 * time.Hour
+	engine.Use(cors.New(corsCfg))
 
 	info := handler.NewInfoHandler(version, commit, build)
 	engine.GET("/status", info.HandleStatus)
