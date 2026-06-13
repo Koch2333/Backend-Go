@@ -1,4 +1,4 @@
-.PHONY: setup deps web generate build dev run clean help
+.PHONY: setup deps web web-deps spa generate build dev run clean help
 
 VERSION  ?= dev
 COMMIT   ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo none)
@@ -17,8 +17,13 @@ deps: ## Download and tidy Go modules
 	go mod download
 	go mod tidy
 
-web: ## Install web deps and build admin SPA
-	cd web && pnpm install --no-frozen-lockfile && pnpm build
+web: web-deps spa ## Install web deps and build admin SPA
+
+web-deps: ## Install web (pnpm) dependencies
+	cd web && pnpm install --no-frozen-lockfile
+
+spa: ## Build admin SPA only (assumes deps installed)
+	cd web && pnpm build
 
 generate: ## Generate module import file (autogen_imports.go)
 	go generate ./internal/bootstrap/mod

@@ -7,7 +7,7 @@
 #>
 param(
     [Parameter(Position=0)]
-    [ValidateSet("setup","deps","web","generate","build","dev","run","clean","help")]
+    [ValidateSet("setup","deps","web","web-deps","spa","generate","build","dev","run","clean","help")]
     [string]$Target = "help"
 )
 
@@ -29,13 +29,25 @@ function Do-Deps {
     go mod tidy;      if ($LASTEXITCODE) { throw "go mod tidy failed" }
 }
 
-function Do-Web {
-    Step "Building web SPA"
+function Do-WebDeps {
+    Step "Installing web dependencies"
     Push-Location web
     try {
         pnpm install --no-frozen-lockfile; if ($LASTEXITCODE) { throw "pnpm install failed" }
-        pnpm build;                        if ($LASTEXITCODE) { throw "pnpm build failed" }
     } finally { Pop-Location }
+}
+
+function Do-Spa {
+    Step "Building admin SPA"
+    Push-Location web
+    try {
+        pnpm build; if ($LASTEXITCODE) { throw "pnpm build failed" }
+    } finally { Pop-Location }
+}
+
+function Do-Web {
+    Do-WebDeps
+    Do-Spa
 }
 
 function Do-Generate {
@@ -90,6 +102,8 @@ function Do-Help {
     Write-Host "  setup       Full init: deps + web SPA + codegen"
     Write-Host "  deps        Download and tidy Go modules"
     Write-Host "  web         Install web deps and build admin SPA"
+    Write-Host "  web-deps    Install web (pnpm) dependencies only"
+    Write-Host "  spa         Build admin SPA only (assumes deps installed)"
     Write-Host "  generate    Generate module import file (autogen_imports.go)"
     Write-Host "  build       Full build: setup + compile binary"
     Write-Host "  dev         Quick dev build (skip web)"
@@ -103,6 +117,8 @@ switch ($Target) {
     "setup"    { Do-Setup }
     "deps"     { Do-Deps }
     "web"      { Do-Web }
+    "web-deps" { Do-WebDeps }
+    "spa"      { Do-Spa }
     "generate" { Do-Generate }
     "build"    { Do-Build }
     "dev"      { Do-Dev }
