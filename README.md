@@ -36,6 +36,33 @@ pkg/
   objstore/      # NEW — Storage interface + Local driver, COS/OSS stubs (build tags)
 ```
 
+## Quick start
+
+Prerequisites: **Go 1.23+**, **Node 24+**, **pnpm 10+**.
+
+```bash
+# Linux / macOS
+make setup          # go mod + web SPA + codegen, one step
+
+# Windows (cmd)
+make setup
+```
+
+| Target | What it does |
+|--------|-------------|
+| `setup` | Full init: `deps` → `web` → `generate` |
+| `deps` | `go mod download` + `go mod tidy` |
+| `web` | `web-deps` + `spa` |
+| `web-deps` | `pnpm install` (web dependencies only) |
+| `spa` | `pnpm build` (compile admin SPA only) |
+| `generate` | `go generate` — scan `internal/**/module.go`, write `autogen_imports.go` |
+| `build` | `setup` + compile release binary → `dist/` |
+| `dev` | `deps` + `generate` + compile (skip web, for daily dev) |
+| `run` | `dev` + run the binary |
+| `clean` | Remove `dist/` and `autogen_imports.go` |
+
+> POSIX uses the `Makefile`; Windows uses `make.bat` — same targets, same names.
+
 ## Build
 
 ### Full server
