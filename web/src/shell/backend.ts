@@ -6,6 +6,24 @@ const KEY_SUFFIX = '.apiBase'
 const refs = new Map<string, Ref<string>>()
 const listeners = new Set<(name: string, value: string) => void>()
 
+// 后台 server 在 admin 端口的 index.html 注入：
+//   <script>window.__ROAST_RUNTIME={apiBase:"http://host:8080"}</script>
+// 这样 SPA 一加载就知道 API 在哪，不用手点 BackendSwitcher。
+declare global {
+  interface Window {
+    __ROAST_RUNTIME?: { apiBase?: string }
+  }
+}
+
+export function getRuntimeApiBase(): string {
+  if (typeof window === 'undefined') return ''
+  const v = window.__ROAST_RUNTIME?.apiBase
+  if (typeof v !== 'string') return ''
+  let s = v.trim()
+  while (s.endsWith('/')) s = s.slice(0, -1)
+  return s
+}
+
 function storageKey(moduleName: string): string {
   return `${KEY_PREFIX}${moduleName}${KEY_SUFFIX}`
 }
@@ -47,8 +65,19 @@ function isValidBase(v: string): boolean {
   }
 }
 
+/**
+ * 模块当前生效的 API base URL：
+ *   1) localStorage 里用户显式设置的（BackendSwitcher / ?api=）
+ *   2) 否则 server 注入的运行时默认（不同端口部署时通常是 http://host:8080）
+ *   3) 否则空字符串（=> 同源相对路径）
+ */
 export function getApiBase(moduleName: string): string {
-  return readRaw(moduleName)
+  return readRaw(moduleName) || getRuntimeApiBase()
+}
+
+/** 是否用了用户自己设置的 override（区别于运行时默认）。给 UI 显示用。 */
+export function hasUserOverride(moduleName: string): boolean {
+  return readRaw(moduleName) !== ''
 }
 
 export function setApiBase(moduleName: string, value: string): void {

@@ -31,7 +31,8 @@ const routes: RouteRecordRaw[] = [
 ]
 
 export const router = createRouter({
-  history: createWebHistory('/admin/'),
+  // base 跟着 vite 的 `base` 走（默认 '/admin/'，单独部署到根域名时由 VITE_BASE=/ 覆盖）。
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior: () => ({ top: 0 }),
 })
