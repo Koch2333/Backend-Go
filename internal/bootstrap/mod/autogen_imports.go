@@ -4,6 +4,7 @@ package mod
 // This file imports all modules with module.go so their init() can register.
 import (
 	_ "backend-go/internal/avatar"
+	_ "backend-go/internal/comments"
 	_ "backend-go/internal/integrations/aicweb"
 	_ "backend-go/internal/redirect"
 	_ "backend-go/internal/rhythmgames"
