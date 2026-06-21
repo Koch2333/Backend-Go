@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"backend-go/internal/auth/adminpw"
 	"backend-go/internal/authflow"
 	"backend-go/internal/risk"
 	"backend-go/pkg/objstore"
@@ -60,7 +61,7 @@ func ConfigFromEnv() Config {
 		}
 		return def
 	}
-	origins := strings.Split(getStr("ROUNDNFC_WEBAUTHN_ORIGINS", "http://localhost:5174"), ",")
+	origins := strings.Split(getStr("ROUNDNFC_WEBAUTHN_ORIGINS", "http://localhost:5174,http://localhost:8081"), ",")
 	for i, o := range origins {
 		origins[i] = strings.TrimSpace(o)
 	}
@@ -73,7 +74,7 @@ func ConfigFromEnv() Config {
 		TurnstileSecret:   os.Getenv("ROUNDNFC_TURNSTILE_SECRET"),
 		RateLimitPerMin:   atoiOr("ROUNDNFC_RATELIMIT_PER_MIN", 12),
 		AdminUsername:     getStr("ROUNDNFC_ADMIN_USERNAME", "admin"),
-		AdminPasswordHash: os.Getenv("ROUNDNFC_ADMIN_PASSWORD_HASH"),
+		AdminPasswordHash: adminpw.Resolve("roundnfc", "ROUNDNFC"),
 		JWTSecret:         []byte(os.Getenv("ROUNDNFC_JWT_SECRET")),
 		JWTTTL:            time.Duration(atoiOr("ROUNDNFC_JWT_TTL_HOURS", 12)) * time.Hour,
 		TOTPIssuer:        getStr("ROUNDNFC_TOTP_ISSUER", "RoundNFC"),

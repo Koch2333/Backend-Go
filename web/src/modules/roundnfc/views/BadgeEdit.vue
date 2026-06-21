@@ -5,11 +5,16 @@ import { showFailToast, showSuccessToast } from '@/shell/toast'
 import { extractMessage } from '@/shell/http'
 import { createBadge, getBadge, upsertBadge, uploadBadgeImage } from '../api'
 import type { Badge } from '../types'
+import { BADGE_STYLE_OPTIONS } from '../styles'
 
 const route = useRoute()
 const router = useRouter()
 const idParam = route.params.id as string | undefined
 const isNew = computed(() => !idParam || idParam === 'new')
+
+// 这枚徽章是否已经在后端存在。新建页一旦保存（含上传图片时的自动保存）就置 true，
+// 之后的保存走更新而不是再次创建。
+const persisted = ref(!isNew.value)
 
 const form = reactive<Partial<Badge> & { id: string }>({
   id: '',
@@ -27,6 +32,7 @@ const loading = ref(false)
 const submitting = ref(false)
 const uploading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+const styleOptions = BADGE_STYLE_OPTIONS
 
 async function load() {
   if (isNew.value) return
@@ -41,6 +47,22 @@ async function load() {
   }
 }
 
+// 确保徽章已在后端存在；新建态会先校验必填项并自动创建一次。
+async function ensurePersisted(): Promise<boolean> {
+  if (persisted.value) return true
+  if (!form.id) {
+    showFailToast('请先填写 ID')
+    return false
+  }
+  if (!form.title) {
+    showFailToast('请先填写标题')
+    return false
+  }
+  await createBadge({ ...form })
+  persisted.value = true
+  return true
+}
+
 async function onSubmit() {
   if (!form.id) {
     showFailToast('请填写 id')
@@ -48,8 +70,9 @@ async function onSubmit() {
   }
   submitting.value = true
   try {
-    if (isNew.value) {
+    if (!persisted.value) {
       await createBadge({ ...form })
+      persisted.value = true
     } else {
       await upsertBadge({ ...form })
     }
@@ -65,15 +88,13 @@ async function onSubmit() {
 async function onPickFile(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
-  if (isNew.value) {
-    showFailToast('请先保存再上传图片')
-    return
-  }
   uploading.value = true
   try {
+    // 新建时先自动保存一次，省得用户被「请先保存再上传」打断。
+    if (!(await ensurePersisted())) return
     const res = await uploadBadgeImage(form.id, file)
     form.imageUrl = res.key
-    showSuccessToast('已上传')
+    showSuccessToast('已上传，已自动填入图片地址')
   } catch (err) {
     showFailToast(extractMessage(err, '上传失败'))
   } finally {
@@ -124,16 +145,17 @@ onMounted(load)
         :value="form.type"
         @input="(e: any) => (form.type = e.target.value)"
       />
-      <md-outlined-text-field
-        label="样式 Key" placeholder="命中前端内置图，留空走 imageUrl"
-        :value="form.styleKey"
-        @input="(e: any) => (form.styleKey = e.target.value)"
-      />
-      <md-outlined-text-field
-        label="图片 Key/URL" placeholder="后端对象 key 或绝对 URL"
-        :value="form.imageUrl"
-        @input="(e: any) => (form.imageUrl = e.target.value)"
-      />
+      <md-outlined-select
+        label="内置样式" :value="form.styleKey ?? ''"
+        @change="(e: any) => (form.styleKey = e.target.value)"
+      >
+        <md-select-option value="">
+          <div slot="headline">无（使用上传的图片）</div>
+        </md-select-option>
+        <md-select-option v-for="opt in styleOptions" :key="opt.key" :value="opt.key">
+          <div slot="headline">{{ opt.label }}</div>
+        </md-select-option>
+      </md-outlined-select>
       <md-outlined-text-field
         label="编号" placeholder="12 / 50"
         :value="form.serialNo"
@@ -150,15 +172,26 @@ onMounted(load)
         @input="(e: any) => (form.description = e.target.value)"
       />
 
-      <div v-if="!isNew" class="upload-row">
-        <input ref="fileInput" type="file" accept="image/*" hidden @change="onPickFile" />
-        <md-outlined-button type="button" :disabled="uploading" @click="fileInput?.click()">
-          <md-icon slot="icon">upload</md-icon>
-          {{ uploading ? '上传中…' : '上传徽章主图' }}
-        </md-outlined-button>
-        <span class="m3-body-small text-on-surface-variant">
-          jpeg/png/webp/gif，最大 8MB
-        </span>
+      <div class="image-section">
+        <div class="m3-title-small text-on-surface">徽章主图</div>
+        <p class="m3-body-small text-on-surface-variant">
+          选了上面的「内置样式」可以不传图；要用自定义图就在这里上传，上传后会自动填好下面的地址。
+        </p>
+        <div class="upload-row">
+          <input ref="fileInput" type="file" accept="image/*" hidden @change="onPickFile" />
+          <md-outlined-button type="button" :disabled="uploading" @click="fileInput?.click()">
+            <md-icon slot="icon">upload</md-icon>
+            {{ uploading ? '上传中…' : (form.imageUrl ? '更换主图' : '上传主图') }}
+          </md-outlined-button>
+          <span class="m3-body-small text-on-surface-variant">
+            jpeg/png/webp/gif，最大 8MB
+          </span>
+        </div>
+        <md-outlined-text-field
+          label="图片 Key / URL（高级）" placeholder="上传后自动填写，也可手填后端对象 key 或绝对 URL"
+          :value="form.imageUrl"
+          @input="(e: any) => (form.imageUrl = e.target.value)"
+        />
       </div>
 
       <div class="pt-1">
@@ -178,6 +211,15 @@ onMounted(load)
   gap: 16px;
 }
 md-outlined-text-field { width: 100%; }
+md-outlined-select { width: 100%; }
+.image-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+}
 .upload-row {
   display: flex;
   align-items: center;

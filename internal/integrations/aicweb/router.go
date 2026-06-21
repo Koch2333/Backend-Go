@@ -15,6 +15,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// mountStaticOnce 把 dir 暴露到 prefix；该前缀已被注册过就跳过，
+// 防止 avatar 模块和 aicweb 模块互相挂同一个静态目录时 gin 路由冲突。
+func mountStaticOnce(engine *gin.Engine, prefix, dir string) {
+	wildcard := prefix + "/*filepath"
+	for _, ri := range engine.Routes() {
+		if ri.Method == "GET" && ri.Path == wildcard {
+			return
+		}
+	}
+	engine.StaticFS(prefix, gin.Dir(dir, false))
+}
+
 // mediaAdapter wraps avatar.Service to implement MediaUploader.
 type mediaAdapter struct{ svc *av.Service }
 
@@ -77,7 +89,7 @@ func Mount(engine *gin.Engine, r *gin.RouterGroup) {
 	avtSvc, _ := av.NewServiceFromEnv()
 	var avt MediaUploader
 	if avtSvc != nil {
-		engine.StaticFS(avtSvc.URLPrefix, gin.Dir(avtSvc.Dir, false))
+		mountStaticOnce(engine, avtSvc.URLPrefix, avtSvc.Dir)
 		avt = &mediaAdapter{svc: avtSvc}
 	}
 
@@ -85,7 +97,7 @@ func Mount(engine *gin.Engine, r *gin.RouterGroup) {
 	bnrSvc, _ := newBannerService()
 	var bnr MediaUploader
 	if bnrSvc != nil {
-		engine.StaticFS(bnrSvc.URLPrefix, gin.Dir(bnrSvc.Dir, false))
+		mountStaticOnce(engine, bnrSvc.URLPrefix, bnrSvc.Dir)
 		bnr = &mediaAdapter{svc: bnrSvc}
 	}
 
