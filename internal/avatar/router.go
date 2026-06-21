@@ -11,6 +11,18 @@ func Mount(r *gin.RouterGroup, svc *Service) {
 	r.GET("/:id", h.Get)
 }
 
+// mountStaticOnce 把 dir 暴露到 prefix；如果该前缀的 GET 路由已经存在就跳过，
+// 避免与其他模块（比如 aicweb）重复注册导致 gin 路由冲突 panic。
+func mountStaticOnce(engine *gin.Engine, prefix, dir string) {
+	wildcard := prefix + "/*filepath"
+	for _, ri := range engine.Routes() {
+		if ri.Method == "GET" && ri.Path == wildcard {
+			return
+		}
+	}
+	engine.StaticFS(prefix, gin.Dir(dir, false))
+}
+
 // Attach 固定前缀（兼容老用法）：/api/avatar
 func Attach(engine *gin.Engine) {
 	envinit.Init()
@@ -19,8 +31,7 @@ func Attach(engine *gin.Engine) {
 		panic("avatar service init failed: " + err.Error())
 	}
 
-	// 静态资源：将 AVATAR_DIR 暴露到 AVATAR_URL_PREFIX
-	engine.StaticFS(svc.URLPrefix, gin.Dir(svc.Dir, false))
+	mountStaticOnce(engine, svc.URLPrefix, svc.Dir)
 
 	grp := engine.Group("/api/avatar")
 	Mount(grp, svc)
@@ -33,7 +44,7 @@ func AttachTo(engine *gin.Engine, apiPrefix string) {
 	if err != nil {
 		panic("avatar service init failed: " + err.Error())
 	}
-	engine.StaticFS(svc.URLPrefix, gin.Dir(svc.Dir, false))
+	mountStaticOnce(engine, svc.URLPrefix, svc.Dir)
 
 	if apiPrefix == "" {
 		apiPrefix = "/api/avatar"
