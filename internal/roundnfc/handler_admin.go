@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -140,6 +141,83 @@ func (h *adminHandler) ListPhotoRequests(c *gin.Context) {
 
 type statusPayload struct {
 	Status string `json:"status"`
+}
+
+type uploadPresignPayload struct {
+	BadgeID     string `json:"badgeId"`
+	FileName    string `json:"fileName"`
+	ContentType string `json:"contentType"`
+	Purpose     string `json:"purpose"`
+}
+
+func (h *adminHandler) PresignUpload(c *gin.Context) {
+	var p uploadPresignPayload
+	if err := c.ShouldBindJSON(&p); err != nil {
+		respondError(c, http.StatusBadRequest, "invalid body")
+		return
+	}
+	out, err := h.svc.PresignUpload(c.Request.Context(), p.BadgeID, p.FileName, p.ContentType, p.Purpose)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrCOSNotConfigured):
+			respondError(c, http.StatusServiceUnavailable, "cos not configured")
+		default:
+			respondError(c, http.StatusBadRequest, err.Error())
+		}
+		return
+	}
+	respondData(c, out)
+}
+
+type nfcWritePayload struct {
+	BadgeID        string `json:"badgeId"`
+	TagUID         string `json:"tagUid"`
+	NDEFURL        string `json:"ndefUrl"`
+	DeviceID       string `json:"deviceId"`
+	WriteStatus    string `json:"writeStatus"`
+	PhotoObjectKey string `json:"photoObjectKey"`
+	WrittenAt      string `json:"writtenAt"`
+}
+
+func (h *adminHandler) CreateNFCWrite(c *gin.Context) {
+	var p nfcWritePayload
+	if err := c.ShouldBindJSON(&p); err != nil {
+		respondError(c, http.StatusBadRequest, "invalid body")
+		return
+	}
+	badgeID := strings.TrimSpace(p.BadgeID)
+	if badgeID == "" {
+		respondError(c, http.StatusBadRequest, "badgeId required")
+		return
+	}
+	photoKey := strings.TrimSpace(p.PhotoObjectKey)
+	if isAbsoluteURL(photoKey) {
+		respondError(c, http.StatusBadRequest, "photoObjectKey must be an object key")
+		return
+	}
+	writtenAt := time.Now().UTC()
+	if strings.TrimSpace(p.WrittenAt) != "" {
+		t, err := time.Parse(time.RFC3339, strings.TrimSpace(p.WrittenAt))
+		if err != nil {
+			respondError(c, http.StatusBadRequest, "invalid writtenAt")
+			return
+		}
+		writtenAt = t.UTC()
+	}
+	w := &NFCWrite{
+		BadgeID:        badgeID,
+		TagUID:         strings.TrimSpace(p.TagUID),
+		NDEFURL:        strings.TrimSpace(p.NDEFURL),
+		DeviceID:       strings.TrimSpace(p.DeviceID),
+		WriteStatus:    strings.TrimSpace(p.WriteStatus),
+		PhotoObjectKey: photoKey,
+		WrittenAt:      writtenAt,
+	}
+	if err := h.svc.store.InsertNFCWrite(c.Request.Context(), w); err != nil {
+		respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondData(c, w)
 }
 
 func (h *adminHandler) UpdatePhotoStatus(c *gin.Context) {

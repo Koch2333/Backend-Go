@@ -114,8 +114,17 @@ Endpoints (mounted at `/api/roundnfc` by default):
 | GET    | `/admin/me`                                | JWT      | Probe                                  |
 | GET/POST/PUT/DELETE | `/admin/badges[...]`              | JWT      | Badge CRUD                             |
 | POST   | `/admin/badges/:id/image`                  | JWT      | Replace badge image (multipart)        |
+| POST   | `/admin/uploads/presign`                   | JWT / X-App-Token | Return 5-minute COS PUT URL     |
+| POST   | `/admin/nfc-writes`                        | JWT / X-App-Token | Save NFC write metadata + photo key |
 | GET/PATCH | `/admin/photo-requests[...]`            | JWT      | List + status update                   |
 | GET/PATCH | `/admin/autograph-requests[...]`        | JWT      | List + status update                   |
+
+For Android direct COS upload, configure `ROUNDNFC_COS_BUCKET`,
+`ROUNDNFC_COS_REGION`, `ROUNDNFC_COS_SECRET_ID`, `ROUNDNFC_COS_SECRET_KEY`, and
+optionally `ROUNDNFC_ADMIN_APP_TOKEN` on the backend only. The Android client
+calls `/admin/uploads/presign`, uploads with HTTP `PUT` to `uploadUrl`, then
+saves only `photoObjectKey` through `/admin/nfc-writes`. Keep the COS bucket
+private; do not store permanent COS URLs in the database.
 
 ## TODO
 

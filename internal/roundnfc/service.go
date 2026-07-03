@@ -34,6 +34,12 @@ type Config struct {
 	ObjectHMACKey     []byte
 	ObjectTTL         time.Duration
 	MaxUploadBytes    int64
+	COSBucket         string
+	COSRegion         string
+	COSSecretID       string
+	COSSecretKey      string
+	COSScheme         string
+	AdminAppToken     string
 	TurnstileSecret   string
 	RateLimitPerMin   int
 	AdminUsername     string
@@ -71,6 +77,12 @@ func ConfigFromEnv() Config {
 		ObjectHMACKey:     []byte(os.Getenv("ROUNDNFC_OBJECT_HMAC_KEY")),
 		ObjectTTL:         time.Duration(atoiOr("ROUNDNFC_OBJECT_TTL_SECONDS", 120)) * time.Second,
 		MaxUploadBytes:    int64(atoiOr("ROUNDNFC_MAX_UPLOAD_MB", 8)) * (1 << 20),
+		COSBucket:         strings.TrimSpace(os.Getenv("ROUNDNFC_COS_BUCKET")),
+		COSRegion:         strings.TrimSpace(os.Getenv("ROUNDNFC_COS_REGION")),
+		COSSecretID:       strings.TrimSpace(os.Getenv("ROUNDNFC_COS_SECRET_ID")),
+		COSSecretKey:      strings.TrimSpace(os.Getenv("ROUNDNFC_COS_SECRET_KEY")),
+		COSScheme:         getStr("ROUNDNFC_COS_SCHEME", "https"),
+		AdminAppToken:     strings.TrimSpace(os.Getenv("ROUNDNFC_ADMIN_APP_TOKEN")),
 		TurnstileSecret:   os.Getenv("ROUNDNFC_TURNSTILE_SECRET"),
 		RateLimitPerMin:   atoiOr("ROUNDNFC_RATELIMIT_PER_MIN", 12),
 		AdminUsername:     getStr("ROUNDNFC_ADMIN_USERNAME", "admin"),

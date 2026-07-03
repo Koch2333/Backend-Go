@@ -83,6 +83,18 @@ CREATE TABLE IF NOT EXISTS autograph_requests (
   updated_at      DATETIME NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_auto_badge_status ON autograph_requests(badge_id, status, updated_at);
+CREATE TABLE IF NOT EXISTS nfc_writes (
+  id               TEXT PRIMARY KEY,
+  badge_id         TEXT NOT NULL,
+  tag_uid          TEXT NOT NULL DEFAULT '',
+  ndef_url         TEXT NOT NULL DEFAULT '',
+  device_id        TEXT NOT NULL DEFAULT '',
+  write_status     TEXT NOT NULL DEFAULT '',
+  photo_object_key TEXT NOT NULL DEFAULT '',
+  written_at       DATETIME NOT NULL,
+  created_at       DATETIME NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nfc_writes_badge_written ON nfc_writes(badge_id, written_at);
 `
 	if _, err := s.db.Exec(ddl); err != nil {
 		return err
@@ -339,4 +351,22 @@ func (s *Store) UpdateAutographStatus(ctx context.Context, id, status string) er
 		return ErrNotFound
 	}
 	return nil
+}
+
+// ----- NFC Writes -----
+
+func (s *Store) InsertNFCWrite(ctx context.Context, w *NFCWrite) error {
+	now := time.Now().UTC()
+	if w.ID == "" {
+		w.ID = newID("nfcw")
+	}
+	if w.WrittenAt.IsZero() {
+		w.WrittenAt = now
+	}
+	w.CreatedAt = now
+	_, err := s.db.ExecContext(ctx, `
+INSERT INTO nfc_writes(id,badge_id,tag_uid,ndef_url,device_id,write_status,photo_object_key,written_at,created_at)
+VALUES(?,?,?,?,?,?,?,?,?)`,
+		w.ID, w.BadgeID, w.TagUID, w.NDEFURL, w.DeviceID, w.WriteStatus, w.PhotoObjectKey, w.WrittenAt, w.CreatedAt)
+	return err
 }

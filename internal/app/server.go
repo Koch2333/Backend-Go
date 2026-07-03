@@ -67,7 +67,7 @@ func loadConfig() Config {
 	if v := strings.TrimSpace(os.Getenv("HTTP_CORS_CREDENTIALS")); v != "" {
 		allowCreds = strings.EqualFold(v, "true") || v == "1" || strings.EqualFold(v, "yes")
 	}
-	allowHeaders := []string{"CF-Turnstile-Response", "Authorization", "Content-Type"}
+	allowHeaders := []string{"CF-Turnstile-Response", "Authorization", "Content-Type", "X-App-Token"}
 	if v := strings.TrimSpace(os.Getenv("HTTP_CORS_HEADERS")); v != "" {
 		allowHeaders = nil
 		for _, h := range strings.Split(v, ",") {
