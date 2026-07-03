@@ -46,7 +46,7 @@ func main() {
 		c.AllowOrigins = []string{"http://localhost:5173", "http://127.0.0.1:5173"}
 	}
 	c.AllowCredentials = true
-	c.AddAllowHeaders("Authorization", "Content-Type", "CF-Turnstile-Response")
+	c.AddAllowHeaders("Authorization", "Content-Type", "CF-Turnstile-Response", "X-App-Token")
 	c.MaxAge = 12 * time.Hour
 	engine.Use(cors.New(c))
 

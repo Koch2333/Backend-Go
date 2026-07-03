@@ -48,3 +48,15 @@ type AutographRequest struct {
 	CreatedAt      time.Time `json:"createdAt"`
 	UpdatedAt      time.Time `json:"updatedAt"`
 }
+
+type NFCWrite struct {
+	ID             string    `json:"id"`
+	BadgeID        string    `json:"badgeId"`
+	TagUID         string    `json:"tagUid"`
+	NDEFURL        string    `json:"ndefUrl"`
+	DeviceID       string    `json:"deviceId"`
+	WriteStatus    string    `json:"writeStatus"`
+	PhotoObjectKey string    `json:"photoObjectKey,omitempty"`
+	WrittenAt      time.Time `json:"writtenAt"`
+	CreatedAt      time.Time `json:"createdAt"`
+}

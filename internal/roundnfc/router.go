@@ -1,7 +1,6 @@
 package roundnfc
 
 import (
-	"backend-go/internal/auth"
 	"backend-go/internal/authflow"
 	"backend-go/internal/roundnfc/envinit"
 
@@ -36,14 +35,16 @@ func AttachTo(engine *gin.Engine, prefix string) error {
 	admin := g.Group("/admin")
 	flow.Mount(admin)
 
-	// badge + request management (require valid JWT)
-	authed := admin.Group("", auth.Required(svc.cfg.JWTSecret))
+	// badge + request management (require valid JWT or app token)
+	authed := admin.Group("", adminRequired(svc))
 	authed.GET("/badges", adm.ListBadges)
 	authed.POST("/badges", adm.UpsertBadge)
 	authed.GET("/badges/:id", adm.GetBadge)
 	authed.PUT("/badges/:id", adm.UpsertBadge)
 	authed.DELETE("/badges/:id", adm.DeleteBadge)
 	authed.POST("/badges/:id/image", adm.UploadBadgeImage)
+	authed.POST("/uploads/presign", adm.PresignUpload)
+	authed.POST("/nfc-writes", adm.CreateNFCWrite)
 	authed.GET("/photo-requests", adm.ListPhotoRequests)
 	authed.PATCH("/photo-requests/:id", adm.UpdatePhotoStatus)
 	authed.GET("/autograph-requests", adm.ListAutographRequests)

@@ -30,6 +30,12 @@ func defaultEnv() []byte {
 			"ROUNDNFC_OBJECT_HMAC_KEY=" + randHex(32) + "\n" +
 			"ROUNDNFC_OBJECT_TTL_SECONDS=120\n" +
 			"ROUNDNFC_MAX_UPLOAD_MB=8\n\n" +
+			"# COS direct upload (private bucket; backend signs short PUT URLs)\n" +
+			"ROUNDNFC_COS_BUCKET=\n" +
+			"ROUNDNFC_COS_REGION=\n" +
+			"ROUNDNFC_COS_SECRET_ID=\n" +
+			"ROUNDNFC_COS_SECRET_KEY=\n" +
+			"ROUNDNFC_COS_SCHEME=https\n\n" +
 			"# 风控\n" +
 			"ROUNDNFC_TURNSTILE_SECRET=\n" +
 			"ROUNDNFC_RATELIMIT_PER_MIN=12\n\n" +
@@ -40,6 +46,8 @@ func defaultEnv() []byte {
 			"ROUNDNFC_ADMIN_USERNAME=admin\n" +
 			"ROUNDNFC_ADMIN_PASSWORD=admin\n" +
 			"ROUNDNFC_ADMIN_PASSWORD_HASH=\n" +
+			"# Optional Android/admin app token for selected admin APIs. Keep long and random.\n" +
+			"ROUNDNFC_ADMIN_APP_TOKEN=\n" +
 			"ROUNDNFC_JWT_SECRET=" + randHex(32) + "\n" +
 			"ROUNDNFC_JWT_TTL_HOURS=12\n\n" +
 			"# TOTP (Google Authenticator)\n" +
