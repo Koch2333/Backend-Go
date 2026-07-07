@@ -207,6 +207,16 @@ func (s *Service) PublicBadge(ctx context.Context, b *Badge, urlPrefix string) B
 			out.ImageURL = ""
 		}
 	}
+	if out.StyleKey != "" {
+		if t, err := s.store.GetBadgeStyleTemplate(ctx, out.StyleKey); err == nil && t != nil && t.Enabled && t.ImageURL != "" {
+			out.StyleImageURL = t.ImageURL
+			if isAbsoluteURL(t.ImageURL) {
+				out.StyleImageOriginalURL = t.ImageURL
+			} else if token, err := s.SignObject(ctx, t.ImageURL); err == nil {
+				out.StyleImageOriginalURL = strings.TrimRight(urlPrefix, "/") + "/objects/" + token
+			}
+		}
+	}
 	return out
 }
 

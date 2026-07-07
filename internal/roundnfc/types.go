@@ -6,18 +6,20 @@ import (
 )
 
 type Badge struct {
-	ID           string             `json:"id"`
-	Title        string             `json:"title"`
-	Series       string             `json:"series,omitempty"`
-	Type         string             `json:"type,omitempty"`
-	StyleKey     string             `json:"styleKey,omitempty"`
-	ImageURL     string             `json:"imageUrl,omitempty"`
-	Description  string             `json:"description,omitempty"`
-	SerialNo     string             `json:"serialNo,omitempty"`
-	ReleasedAt   string             `json:"releasedAt,omitempty"`
-	CoserBinding *BadgeCoserBinding `json:"coserBinding,omitempty"`
-	CreatedAt    time.Time          `json:"createdAt,omitempty"`
-	UpdatedAt    time.Time          `json:"updatedAt,omitempty"`
+	ID                    string             `json:"id"`
+	Title                 string             `json:"title"`
+	Series                string             `json:"series,omitempty"`
+	Type                  string             `json:"type,omitempty"`
+	StyleKey              string             `json:"styleKey,omitempty"`
+	ImageURL              string             `json:"imageUrl,omitempty"`
+	StyleImageURL         string             `json:"styleImageUrl,omitempty"`
+	StyleImageOriginalURL string             `json:"styleImageOriginalUrl,omitempty"`
+	Description           string             `json:"description,omitempty"`
+	SerialNo              string             `json:"serialNo,omitempty"`
+	ReleasedAt            string             `json:"releasedAt,omitempty"`
+	CoserBinding          *BadgeCoserBinding `json:"coserBinding,omitempty"`
+	CreatedAt             time.Time          `json:"createdAt,omitempty"`
+	UpdatedAt             time.Time          `json:"updatedAt,omitempty"`
 }
 
 type BadgeStyleTemplate struct {
