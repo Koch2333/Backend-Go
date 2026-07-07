@@ -85,6 +85,7 @@ onMounted(load)
           <div slot="headline" class="m3-title-medium">{{ b.title || '(未命名)' }}</div>
           <div slot="supporting-text" class="m3-body-medium">
             {{ b.id }} · {{ b.series || '—' }}
+            <span v-if="b.coserBinding?.cn"> · CN: {{ b.coserBinding.cn }}</span>
           </div>
           <div slot="end">
             <md-icon-button aria-label="删除" @click.stop="onDelete(b)">

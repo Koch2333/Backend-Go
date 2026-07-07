@@ -1,5 +1,6 @@
 import type { ListResult } from '@/shell/types'
 import type { RegBeginOptions, LoginBeginOptions } from '@/shell/webauthn'
+import { getApiBase } from '@/shell/backend'
 import { ROUNDNFC } from './core'
 import type { AutographRequest, Badge, PhotoRequest, RequestStatus } from './types'
 
@@ -118,6 +119,61 @@ export async function uploadBadgeImage(id: string, file: File) {
   return M.unwrap<{ key: string }>(resp)
 }
 
+export interface BadgeStyleTemplate {
+  key: string
+  label: string
+  description?: string
+  imageUrl?: string
+  imageOriginalUrl?: string
+  imagePreviewUrl?: string
+  payload?: unknown
+  enabled?: boolean
+}
+
+export async function listBadgeStyles() {
+  const resp = await M.http().get('/admin/style-templates')
+  return M.unwrap<{ items: BadgeStyleTemplate[] }>(resp)
+}
+
+export async function saveBadgeStyleTemplate(t: BadgeStyleTemplate) {
+  const body = {
+    key: t.key,
+    label: t.label,
+    description: t.description ?? '',
+    imageUrl: t.imageUrl ?? '',
+    payload: t.payload ?? {},
+    enabled: t.enabled ?? true,
+  }
+  const resp = await M.http().put(`/admin/style-templates/${encodeURIComponent(t.key)}`, body)
+  return M.unwrap<BadgeStyleTemplate>(resp)
+}
+
+export async function createBadgeStyleTemplate(t: BadgeStyleTemplate) {
+  const body = {
+    key: t.key,
+    label: t.label,
+    description: t.description ?? '',
+    imageUrl: t.imageUrl ?? '',
+    payload: t.payload ?? {},
+    enabled: t.enabled ?? true,
+  }
+  const resp = await M.http().post('/admin/style-templates', body)
+  return M.unwrap<BadgeStyleTemplate>(resp)
+}
+
+export async function deleteBadgeStyleTemplate(key: string) {
+  await M.http().delete(`/admin/style-templates/${encodeURIComponent(key)}`)
+}
+
+export async function uploadBadgeStyleTemplateImage(key: string, file: File) {
+  const fd = new FormData()
+  fd.append('file', file)
+  const resp = await M.http().post(`/admin/style-templates/${encodeURIComponent(key)}/image`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return M.unwrap<{ key: string; item: BadgeStyleTemplate }>(resp)
+}
+
 export interface RequestListParams {
   badgeId?: string
   status?: RequestStatus
@@ -139,4 +195,49 @@ export async function listAutographRequests(params: RequestListParams = {}) {
 }
 export async function setAutographStatus(id: string, status: RequestStatus) {
   await M.http().patch(`/admin/autograph-requests/${encodeURIComponent(id)}`, { status })
+}
+
+// ----- Android App Pairing -----
+
+export interface AppToken {
+  id: string
+  name: string
+  tokenPrefix: string
+  enabled: boolean
+  lastUsedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AppPairingConfig {
+  protocol: 'roundnfc-writer'
+  version: number
+  name: string
+  apiBase: string
+  apiPrefix: string
+  tokenHeader: string
+  token: string
+  endpoints: Record<string, string>
+  createdAt: string
+}
+
+export async function listAppTokens() {
+  const resp = await M.http().get('/admin/app-tokens')
+  return M.unwrap<{ items: AppToken[] }>(resp)
+}
+
+export async function createAppToken(name: string) {
+  const resp = await M.http().post('/admin/app-tokens', {
+    name,
+    apiBase: getApiBase('roundnfc') || window.location.origin,
+  })
+  return M.unwrap<{ item: AppToken; token: string; pairing: AppPairingConfig }>(resp)
+}
+
+export async function setAppTokenEnabled(id: string, enabled: boolean) {
+  await M.http().patch(`/admin/app-tokens/${encodeURIComponent(id)}`, { enabled })
+}
+
+export async function deleteAppToken(id: string) {
+  await M.http().delete(`/admin/app-tokens/${encodeURIComponent(id)}`)
 }

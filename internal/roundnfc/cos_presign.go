@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -22,10 +23,11 @@ const cosPresignTTL = 5 * time.Minute
 var ErrCOSNotConfigured = errors.New("roundnfc: cos not configured")
 
 type UploadPresign struct {
-	UploadURL string `json:"uploadUrl"`
-	ObjectKey string `json:"objectKey"`
-	Method    string `json:"method"`
-	ExpiresIn int    `json:"expiresIn"`
+	UploadURL string            `json:"uploadUrl"`
+	ObjectKey string            `json:"objectKey"`
+	Method    string            `json:"method"`
+	Headers   map[string]string `json:"headers,omitempty"`
+	ExpiresIn int               `json:"expiresIn"`
 }
 
 func (s *Service) PresignUpload(ctx context.Context, badgeID, fileName, contentType, purpose string) (UploadPresign, error) {
@@ -34,16 +36,26 @@ func (s *Service) PresignUpload(ctx context.Context, badgeID, fileName, contentT
 	if err != nil {
 		return UploadPresign{}, err
 	}
-	u, err := s.presignCOSPut(key, cosPresignTTL)
+	u, headers, err := s.presignCOSPut(key, cosPresignTTL)
 	if err != nil {
 		return UploadPresign{}, err
 	}
+	log.Printf("roundnfc cos presign badge_id=%s purpose=%s object_key=%s bucket=%s region=%s secret_id_prefix=%s expires_in=%ds", badgeID, purpose, key, s.cfg.COSBucket, s.cfg.COSRegion, shortSecretID(s.cfg.COSSecretID), int(cosPresignTTL/time.Second))
 	return UploadPresign{
 		UploadURL: u,
 		ObjectKey: key,
 		Method:    "PUT",
+		Headers:   headers,
 		ExpiresIn: int(cosPresignTTL / time.Second),
 	}, nil
+}
+
+func shortSecretID(v string) string {
+	v = strings.TrimSpace(v)
+	if len(v) <= 6 {
+		return v
+	}
+	return v[:6] + "..."
 }
 
 func buildUploadObjectKey(badgeID, fileName, contentType, purpose string) (string, error) {
@@ -54,6 +66,10 @@ func buildUploadObjectKey(badgeID, fileName, contentType, purpose string) (strin
 	ext, err := uploadExt(fileName, contentType, purpose)
 	if err != nil {
 		return "", err
+	}
+	p := strings.ToLower(strings.TrimSpace(purpose))
+	if p == "coser-photo" || p == "cn-photo" || p == "badge-coser" {
+		return path.Join("roundnfc", "coser-photos", badgeID, uuid.NewString()+ext), nil
 	}
 	return path.Join("roundnfc", "nfc-writes", badgeID, uuid.NewString()+ext), nil
 }
@@ -97,10 +113,10 @@ func safePathSegment(v string) string {
 	return unsafePathChars.ReplaceAllString(v, "_")
 }
 
-func (s *Service) presignCOSPut(objectKey string, ttl time.Duration) (string, error) {
+func (s *Service) presignCOSPut(objectKey string, ttl time.Duration) (string, map[string]string, error) {
 	cfg := s.cfg
 	if cfg.COSBucket == "" || cfg.COSRegion == "" || cfg.COSSecretID == "" || cfg.COSSecretKey == "" {
-		return "", ErrCOSNotConfigured
+		return "", nil, ErrCOSNotConfigured
 	}
 	scheme := strings.ToLower(strings.TrimSpace(cfg.COSScheme))
 	if scheme != "http" {
@@ -124,21 +140,23 @@ func (s *Service) presignCOSPut(objectKey string, ttl time.Duration) (string, er
 	signKey := hmacSHA1Hex([]byte(cfg.COSSecretKey), []byte(keyTime))
 	signature := hmacSHA1Hex([]byte(signKey), []byte(stringToSign))
 
-	q := url.Values{}
-	q.Set("q-sign-algorithm", "sha1")
-	q.Set("q-ak", cfg.COSSecretID)
-	q.Set("q-sign-time", keyTime)
-	q.Set("q-key-time", keyTime)
-	q.Set("q-header-list", headerList)
-	q.Set("q-url-param-list", "")
-	q.Set("q-signature", signature)
-
-	return (&url.URL{
-		Scheme:   scheme,
-		Host:     host,
-		Path:     uri,
-		RawQuery: q.Encode(),
-	}).String(), nil
+	uploadURL := (&url.URL{
+		Scheme: scheme,
+		Host:   host,
+		Path:   uri,
+	}).String()
+	headers := map[string]string{
+		"Authorization": strings.Join([]string{
+			"q-sign-algorithm=sha1",
+			"q-ak=" + cfg.COSSecretID,
+			"q-sign-time=" + keyTime,
+			"q-key-time=" + keyTime,
+			"q-header-list=" + headerList,
+			"q-url-param-list=",
+			"q-signature=" + signature,
+		}, "&"),
+	}
+	return uploadURL, headers, nil
 }
 
 func sha1Hex(b []byte) string {

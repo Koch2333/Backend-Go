@@ -1,19 +1,47 @@
 package roundnfc
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Badge struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Series      string    `json:"series,omitempty"`
-	Type        string    `json:"type,omitempty"`
-	StyleKey    string    `json:"styleKey,omitempty"`
-	ImageURL    string    `json:"imageUrl,omitempty"`
-	Description string    `json:"description,omitempty"`
-	SerialNo    string    `json:"serialNo,omitempty"`
-	ReleasedAt  string    `json:"releasedAt,omitempty"`
-	CreatedAt   time.Time `json:"createdAt,omitempty"`
-	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
+	ID           string             `json:"id"`
+	Title        string             `json:"title"`
+	Series       string             `json:"series,omitempty"`
+	Type         string             `json:"type,omitempty"`
+	StyleKey     string             `json:"styleKey,omitempty"`
+	ImageURL     string             `json:"imageUrl,omitempty"`
+	Description  string             `json:"description,omitempty"`
+	SerialNo     string             `json:"serialNo,omitempty"`
+	ReleasedAt   string             `json:"releasedAt,omitempty"`
+	CoserBinding *BadgeCoserBinding `json:"coserBinding,omitempty"`
+	CreatedAt    time.Time          `json:"createdAt,omitempty"`
+	UpdatedAt    time.Time          `json:"updatedAt,omitempty"`
+}
+
+type BadgeStyleTemplate struct {
+	Key              string          `json:"key"`
+	Label            string          `json:"label"`
+	Description      string          `json:"description,omitempty"`
+	ImageURL         string          `json:"imageUrl,omitempty"`
+	ImageOriginalURL string          `json:"imageOriginalUrl,omitempty"`
+	ImagePreviewURL  string          `json:"imagePreviewUrl,omitempty"`
+	Payload          json.RawMessage `json:"payload,omitempty"`
+	Enabled          bool            `json:"enabled"`
+	CreatedAt        time.Time       `json:"createdAt,omitempty"`
+	UpdatedAt        time.Time       `json:"updatedAt,omitempty"`
+}
+
+type BadgeCoserBinding struct {
+	BadgeID        string    `json:"badgeId"`
+	CN             string    `json:"cn"`
+	PhotoObjectKey string    `json:"photoObjectKey"`
+	DeviceID       string    `json:"deviceId,omitempty"`
+	TagUID         string    `json:"tagUid,omitempty"`
+	WrittenAt      time.Time `json:"writtenAt,omitempty"`
+	CreatedAt      time.Time `json:"createdAt,omitempty"`
+	UpdatedAt      time.Time `json:"updatedAt,omitempty"`
 }
 
 const (
@@ -59,4 +87,26 @@ type NFCWrite struct {
 	PhotoObjectKey string    `json:"photoObjectKey,omitempty"`
 	WrittenAt      time.Time `json:"writtenAt"`
 	CreatedAt      time.Time `json:"createdAt"`
+}
+
+type AppToken struct {
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	TokenPrefix string     `json:"tokenPrefix"`
+	Enabled     bool       `json:"enabled"`
+	LastUsedAt  *time.Time `json:"lastUsedAt,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+}
+
+type AppPairingConfig struct {
+	Protocol    string            `json:"protocol"`
+	Version     int               `json:"version"`
+	Name        string            `json:"name"`
+	ApiBase     string            `json:"apiBase"`
+	ApiPrefix   string            `json:"apiPrefix"`
+	TokenHeader string            `json:"tokenHeader"`
+	Token       string            `json:"token"`
+	Endpoints   map[string]string `json:"endpoints"`
+	CreatedAt   time.Time         `json:"createdAt"`
 }

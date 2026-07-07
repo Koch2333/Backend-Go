@@ -16,6 +16,14 @@ func adminRequired(svc *Service) gin.HandlerFunc {
 			c.Next()
 			return
 		}
+		if ok, err := verifyStoredAppToken(c.Request.Context(), svc, c.GetHeader(appTokenHeader)); err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": 1, "message": "token check failed"})
+			return
+		} else if ok {
+			c.Set(auth.ContextKeySubject, "app-token")
+			c.Next()
+			return
+		}
 
 		raw := auth.ExtractBearer(c.GetHeader("Authorization"))
 		if raw == "" {

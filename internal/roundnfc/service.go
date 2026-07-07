@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"strconv"
@@ -105,6 +106,8 @@ type Service struct {
 
 func NewServiceFromEnv() (*Service, error) {
 	cfg := ConfigFromEnv()
+	log.Printf("[roundnfc/config] db=%s object_dir=%s cos_bucket=%s cos_region=%s cos_secret_id_prefix=%s cos_scheme=%s",
+		cfg.DBPath, cfg.ObjectDir, cfg.COSBucket, cfg.COSRegion, shortSecretID(cfg.COSSecretID), cfg.COSScheme)
 	store, err := openStore(cfg.DBPath)
 	if err != nil {
 		return nil, fmt.Errorf("open store: %w", err)
@@ -205,6 +208,23 @@ func (s *Service) PublicBadge(ctx context.Context, b *Badge, urlPrefix string) B
 		}
 	}
 	return out
+}
+
+func (s *Service) PublicStyleTemplate(ctx context.Context, t BadgeStyleTemplate, urlPrefix string) BadgeStyleTemplate {
+	if t.ImageURL == "" {
+		return t
+	}
+	if isAbsoluteURL(t.ImageURL) {
+		t.ImageOriginalURL = t.ImageURL
+		t.ImagePreviewURL = t.ImageURL
+		return t
+	}
+	if token, err := s.SignObject(ctx, t.ImageURL); err == nil {
+		u := strings.TrimRight(urlPrefix, "/") + "/objects/" + token
+		t.ImageOriginalURL = u
+		t.ImagePreviewURL = u
+	}
+	return t
 }
 
 func isAbsoluteURL(s string) bool {

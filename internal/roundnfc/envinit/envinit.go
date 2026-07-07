@@ -82,7 +82,7 @@ func Init() {
 			log.Printf("[roundnfc/envinit] created %s", envPath)
 		}
 	}
-	_ = godotenv.Load(envPath)
+	_ = godotenv.Overload(envPath)
 	_ = godotenv.Overload(filepath.Join(cfgDir, localEnv))
 	log.Printf("[roundnfc/envinit] loaded %s", cfgDir)
 }

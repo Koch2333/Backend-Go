@@ -16,6 +16,7 @@ const manifest: ModuleManifest = {
       component: () => import('./views/BadgeEdit.vue'),
       props: true,
     },
+    { path: 'style-templates', component: () => import('./views/StyleTemplates.vue') },
     { path: 'photo-requests', component: () => import('./views/PhotoRequests.vue') },
     {
       path: 'autograph-requests',
@@ -26,6 +27,7 @@ const manifest: ModuleManifest = {
 
   nav: [
     { to: '/m/roundnfc/badges', label: '徽章', icon: 'medal-o' },
+    { to: '/m/roundnfc/style-templates', label: '样式模板', icon: 'brush-o' },
     { to: '/m/roundnfc/photo-requests', label: '返图申请', icon: 'photo-o' },
     { to: '/m/roundnfc/autograph-requests', label: 'To 签', icon: 'edit' },
     { to: '/m/roundnfc/security', label: '安全设置', icon: 'shield-o' },

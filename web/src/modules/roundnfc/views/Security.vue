@@ -13,7 +13,13 @@ import {
   beginPasskeyRegister,
   finishPasskeyRegister,
   deletePasskey,
+  listAppTokens,
+  createAppToken,
+  setAppTokenEnabled,
+  deleteAppToken,
   type PasskeyInfo,
+  type AppToken,
+  type AppPairingConfig,
 } from '../api'
 
 const totpEnabled = ref(false)
@@ -30,6 +36,7 @@ onMounted(async () => {
     /* */
   }
   await loadPasskeys()
+  await loadAppTokens()
 })
 
 async function startTOTPSetup() {
@@ -125,6 +132,87 @@ async function handleDeletePasskey(id: string) {
 function fmtDate(s: string) {
   return new Date(s).toLocaleDateString('zh-CN')
 }
+
+const appTokens = ref<AppToken[]>([])
+const appTokenWorking = ref(false)
+const appTokenDialog = ref<HTMLDialogElement & { show: () => void; close: () => void } | null>(null)
+const newAppTokenName = ref('')
+const createdAppToken = ref('')
+const pairingConfig = ref<AppPairingConfig | null>(null)
+const pairingQR = ref('')
+
+async function loadAppTokens() {
+  try {
+    const r = await listAppTokens()
+    appTokens.value = r.items ?? []
+  } catch {
+    /* */
+  }
+}
+
+async function addAppToken() {
+  const name = newAppTokenName.value.trim()
+  if (!name) return
+  appTokenWorking.value = true
+  try {
+    const r = await createAppToken(name)
+    createdAppToken.value = r.token
+    pairingConfig.value = r.pairing
+    pairingQR.value = await toDataURL(JSON.stringify(r.pairing), { width: 240, margin: 2 })
+    newAppTokenName.value = ''
+    showSuccessToast('Android App 配对码已创建')
+    await loadAppTokens()
+  } catch (e) {
+    showFailToast(extractMessage(e))
+  } finally {
+    appTokenWorking.value = false
+  }
+}
+
+async function copyPairingConfig() {
+  if (!pairingConfig.value) return
+  await navigator.clipboard.writeText(JSON.stringify(pairingConfig.value))
+  showSuccessToast('已复制配对信息')
+}
+
+async function copyAppToken() {
+  if (!createdAppToken.value) return
+  await navigator.clipboard.writeText(createdAppToken.value)
+  showSuccessToast('已复制令牌')
+}
+
+function closeAppTokenDialog() {
+  appTokenDialog.value?.close()
+  createdAppToken.value = ''
+  pairingConfig.value = null
+  pairingQR.value = ''
+}
+
+async function toggleAppToken(token: AppToken) {
+  appTokenWorking.value = true
+  try {
+    await setAppTokenEnabled(token.id, !token.enabled)
+    showSuccessToast(token.enabled ? '令牌已停用' : '令牌已启用')
+    await loadAppTokens()
+  } catch (e) {
+    showFailToast(extractMessage(e))
+  } finally {
+    appTokenWorking.value = false
+  }
+}
+
+async function handleDeleteAppToken(id: string) {
+  appTokenWorking.value = true
+  try {
+    await deleteAppToken(id)
+    showSuccessToast('令牌已删除')
+    await loadAppTokens()
+  } catch (e) {
+    showFailToast(extractMessage(e))
+  } finally {
+    appTokenWorking.value = false
+  }
+}
 </script>
 
 <template>
@@ -137,6 +225,60 @@ function fmtDate(s: string) {
         </p>
       </div>
     </header>
+
+    <section class="m3-card p-6">
+      <div class="section-head">
+        <div>
+          <h2 class="m3-title-large text-on-surface">Android App 配对</h2>
+          <p class="m3-body-medium text-on-surface-variant mt-1">
+            生成写卡 App 使用的独立密钥，扫码后自动连接当前后端。
+          </p>
+        </div>
+        <md-filled-button @click="appTokenDialog?.show()">
+          <md-icon slot="icon">qr_code_2</md-icon>
+          配对
+        </md-filled-button>
+      </div>
+
+      <div v-if="appTokens.length === 0" class="token-empty m3-body-medium text-on-surface-variant">
+        还没有 Android App 配对项。
+      </div>
+
+      <md-list v-else class="mt-2">
+        <template v-for="(token, i) in appTokens" :key="token.id">
+          <md-divider v-if="i > 0" />
+          <md-list-item>
+            <md-icon slot="start" class="row-icon">phone_android</md-icon>
+            <div slot="headline" class="m3-title-medium">{{ token.name }}</div>
+            <div slot="supporting-text" class="m3-body-medium">
+              {{ token.tokenPrefix }}... · 创建于 {{ fmtDate(token.createdAt) }}
+              <span v-if="token.lastUsedAt"> · 最近使用 {{ fmtDate(token.lastUsedAt) }}</span>
+            </div>
+            <md-assist-chip
+              slot="end"
+              :label="token.enabled ? '启用中' : '已停用'"
+              :class="token.enabled ? 'chip-tertiary' : 'chip-muted'"
+            />
+            <md-icon-button
+              slot="end"
+              :disabled="appTokenWorking"
+              :aria-label="token.enabled ? '停用' : '启用'"
+              @click="toggleAppToken(token)"
+            >
+              <md-icon>{{ token.enabled ? 'pause_circle' : 'play_circle' }}</md-icon>
+            </md-icon-button>
+            <md-icon-button
+              slot="end"
+              :disabled="appTokenWorking"
+              aria-label="删除"
+              @click="handleDeleteAppToken(token.id)"
+            >
+              <md-icon>delete</md-icon>
+            </md-icon-button>
+          </md-list-item>
+        </template>
+      </md-list>
+    </section>
 
     <section class="m3-card p-6">
       <div class="section-head">
@@ -259,6 +401,42 @@ function fmtDate(s: string) {
         </md-filled-button>
       </div>
     </md-dialog>
+
+    <md-dialog ref="appTokenDialog">
+      <div slot="headline">创建 Android App 配对码</div>
+      <form slot="content" id="add-app-token-form" method="dialog" class="dialog-form">
+        <md-outlined-text-field
+          label="名称（如 写卡手机、备用机）"
+          :value="newAppTokenName"
+          @input="(e: any) => (newAppTokenName = e.target.value)"
+        />
+        <div v-if="pairingQR" class="pairing-created">
+          <img :src="pairingQR" alt="Android pairing QR" class="pairing-qr" />
+          <p class="m3-body-medium text-on-surface">
+            完整令牌只显示这一次，请用 Android 写卡 App 扫码保存。
+          </p>
+          <code class="token-value">{{ createdAppToken }}</code>
+        </div>
+      </form>
+      <div slot="actions">
+        <md-text-button :disabled="appTokenWorking" @click="closeAppTokenDialog">
+          关闭
+        </md-text-button>
+        <md-outlined-button v-if="pairingConfig" @click="copyPairingConfig">
+          复制配对信息
+        </md-outlined-button>
+        <md-outlined-button v-if="createdAppToken" @click="copyAppToken">
+          复制令牌
+        </md-outlined-button>
+        <md-filled-button
+          v-if="!pairingConfig"
+          :disabled="appTokenWorking || !newAppTokenName.trim()"
+          @click="addAppToken"
+        >
+          创建
+        </md-filled-button>
+      </div>
+    </md-dialog>
   </div>
 </template>
 
@@ -303,6 +481,31 @@ function fmtDate(s: string) {
 .passkey-empty-title { margin-top: 4px; }
 .passkey-empty-body { max-width: 360px; }
 .passkey-empty-btn { margin-top: 8px; }
+.token-empty {
+  padding: 24px 0 4px;
+}
+.pairing-created {
+  margin-top: 16px;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+.pairing-qr {
+  height: 240px;
+  width: 240px;
+  border-radius: 16px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: white;
+}
+.token-value {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  word-break: break-all;
+}
 .dialog-form { padding-top: 8px; }
 .dialog-form md-outlined-text-field { width: 100%; }
 md-outlined-text-field { width: 100%; }

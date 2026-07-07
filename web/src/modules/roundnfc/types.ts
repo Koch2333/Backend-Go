@@ -8,6 +8,18 @@ export interface Badge {
   description?: string
   serialNo?: string
   releasedAt?: string
+  coserBinding?: BadgeCoserBinding
+}
+
+export interface BadgeCoserBinding {
+  badgeId: string
+  cn: string
+  photoObjectKey: string
+  deviceId?: string
+  tagUid?: string
+  writtenAt?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export type RequestStatus = 'new' | 'handled' | 'rejected'

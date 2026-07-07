@@ -3,9 +3,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast } from '@/shell/toast'
 import { extractMessage } from '@/shell/http'
-import { createBadge, getBadge, upsertBadge, uploadBadgeImage } from '../api'
+import { createBadge, getBadge, listBadgeStyles, upsertBadge, uploadBadgeImage, type BadgeStyleTemplate } from '../api'
 import type { Badge } from '../types'
-import { BADGE_STYLE_OPTIONS } from '../styles'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,7 +31,16 @@ const loading = ref(false)
 const submitting = ref(false)
 const uploading = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
-const styleOptions = BADGE_STYLE_OPTIONS
+const styleOptions = ref<BadgeStyleTemplate[]>([])
+
+async function loadStyles() {
+  try {
+    const r = await listBadgeStyles()
+    styleOptions.value = r.items ?? []
+  } catch (err) {
+    showFailToast(extractMessage(err, '加载样式失败'))
+  }
+}
 
 async function load() {
   if (isNew.value) return
@@ -103,7 +111,14 @@ async function onPickFile(e: Event) {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await Promise.all([loadStyles(), load()])
+})
+
+function fmtDate(s?: string) {
+  if (!s) return ''
+  return new Date(s).toLocaleString('zh-CN')
+}
 </script>
 
 <template>
@@ -194,6 +209,24 @@ onMounted(load)
         />
       </div>
 
+      <section v-if="form.coserBinding" class="binding-section">
+        <div class="m3-title-small text-on-surface">CN 绑定</div>
+        <div class="binding-grid m3-body-medium">
+          <span class="text-on-surface-variant">CN</span>
+          <span class="text-on-surface">{{ form.coserBinding.cn }}</span>
+          <span class="text-on-surface-variant">图片 Key</span>
+          <code class="binding-code">{{ form.coserBinding.photoObjectKey }}</code>
+          <span v-if="form.coserBinding.deviceId" class="text-on-surface-variant">设备</span>
+          <span v-if="form.coserBinding.deviceId" class="text-on-surface">{{ form.coserBinding.deviceId }}</span>
+          <span v-if="form.coserBinding.tagUid" class="text-on-surface-variant">Tag UID</span>
+          <span v-if="form.coserBinding.tagUid" class="text-on-surface">{{ form.coserBinding.tagUid }}</span>
+          <span v-if="form.coserBinding.writtenAt" class="text-on-surface-variant">写入时间</span>
+          <span v-if="form.coserBinding.writtenAt" class="text-on-surface">
+            {{ fmtDate(form.coserBinding.writtenAt) }}
+          </span>
+        </div>
+      </section>
+
       <div class="pt-1">
         <md-filled-button type="submit" :disabled="submitting" class="w-full">
           {{ submitting ? '保存中…' : '保存' }}
@@ -226,5 +259,23 @@ md-outlined-select { width: 100%; }
   gap: 12px;
   flex-wrap: wrap;
   padding-top: 4px;
+}
+.binding-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+}
+.binding-grid {
+  display: grid;
+  grid-template-columns: minmax(72px, max-content) minmax(0, 1fr);
+  gap: 8px 12px;
+}
+.binding-code {
+  min-width: 0;
+  word-break: break-all;
+  color: var(--md-sys-color-on-surface);
 }
 </style>
