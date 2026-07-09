@@ -39,6 +39,7 @@ type BadgeCoserBinding struct {
 	BadgeID        string    `json:"badgeId"`
 	CN             string    `json:"cn"`
 	PhotoObjectKey string    `json:"photoObjectKey"`
+	PhotoURL       string    `json:"photoUrl,omitempty"`
 	DeviceID       string    `json:"deviceId,omitempty"`
 	TagUID         string    `json:"tagUid,omitempty"`
 	WrittenAt      time.Time `json:"writtenAt,omitempty"`

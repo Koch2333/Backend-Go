@@ -31,6 +31,7 @@ func AttachTo(engine *gin.Engine, prefix string) error {
 	g.POST("/badges/:id/autograph-requests", pub.CreateAutographRequest)
 	g.POST("/uploads", pub.UploadAttachment)
 	g.GET("/objects/:token", pub.GetObject)
+	g.GET("/cos-objects/:token", pub.RedirectCOSObject)
 
 	// admin — flow handles /login, /me, /totp/*, /webauthn/*
 	admin := g.Group("/admin")

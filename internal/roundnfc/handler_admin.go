@@ -41,6 +41,9 @@ func (h *adminHandler) ListBadges(c *gin.Context) {
 		respondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
+	for i := range items {
+		items[i] = h.svc.PublicBadge(c.Request.Context(), &items[i], h.apiPrefix)
+	}
 	respondData(c, gin.H{"items": items, "total": total})
 }
 
@@ -54,7 +57,8 @@ func (h *adminHandler) GetBadge(c *gin.Context) {
 		respondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	respondData(c, b)
+	out := h.svc.PublicBadge(c.Request.Context(), b, h.apiPrefix)
+	respondData(c, out)
 }
 
 func (h *adminHandler) UpsertBadge(c *gin.Context) {

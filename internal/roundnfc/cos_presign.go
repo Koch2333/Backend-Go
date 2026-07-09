@@ -19,6 +19,7 @@ import (
 )
 
 const cosPresignTTL = 5 * time.Minute
+const cosDownloadPresignTTL = 2 * time.Minute
 
 var ErrCOSNotConfigured = errors.New("roundnfc: cos not configured")
 
@@ -157,6 +158,50 @@ func (s *Service) presignCOSPut(objectKey string, ttl time.Duration) (string, ma
 		}, "&"),
 	}
 	return uploadURL, headers, nil
+}
+
+func (s *Service) presignCOSGet(objectKey string, ttl time.Duration) (string, error) {
+	cfg := s.cfg
+	if cfg.COSBucket == "" || cfg.COSRegion == "" || cfg.COSSecretID == "" || cfg.COSSecretKey == "" {
+		return "", ErrCOSNotConfigured
+	}
+	scheme := strings.ToLower(strings.TrimSpace(cfg.COSScheme))
+	if scheme != "http" {
+		scheme = "https"
+	}
+	now := time.Now().Unix()
+	exp := now + int64(ttl/time.Second)
+	keyTime := fmt.Sprintf("%d;%d", now, exp)
+	host := fmt.Sprintf("%s.cos.%s.myqcloud.com", cfg.COSBucket, cfg.COSRegion)
+	uri := "/" + strings.TrimLeft(objectKey, "/")
+
+	headerList := "host"
+	httpString := strings.Join([]string{
+		"get",
+		uri,
+		"",
+		"host=" + strings.ToLower(host) + "\n",
+	}, "\n")
+	httpHash := sha1Hex([]byte(httpString))
+	stringToSign := strings.Join([]string{"sha1", keyTime, httpHash, ""}, "\n")
+	signKey := hmacSHA1Hex([]byte(cfg.COSSecretKey), []byte(keyTime))
+	signature := hmacSHA1Hex([]byte(signKey), []byte(stringToSign))
+
+	u := &url.URL{
+		Scheme: scheme,
+		Host:   host,
+		Path:   uri,
+	}
+	q := u.Query()
+	q.Set("q-sign-algorithm", "sha1")
+	q.Set("q-ak", cfg.COSSecretID)
+	q.Set("q-sign-time", keyTime)
+	q.Set("q-key-time", keyTime)
+	q.Set("q-header-list", headerList)
+	q.Set("q-url-param-list", "")
+	q.Set("q-signature", signature)
+	u.RawQuery = q.Encode()
+	return u.String(), nil
 }
 
 func sha1Hex(b []byte) string {

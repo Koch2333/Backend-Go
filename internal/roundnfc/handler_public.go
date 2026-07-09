@@ -176,6 +176,26 @@ func (h *publicHandler) GetObject(c *gin.Context) {
 	c.DataFromReader(http.StatusOK, meta.Size, meta.ContentType, rc, nil)
 }
 
+// GET /cos-objects/:token 消费一次性 token，并 302 到短时 COS 签名 GET URL。
+func (h *publicHandler) RedirectCOSObject(c *gin.Context) {
+	u, err := h.svc.ResolveCOSObjectURL(c.Request.Context(), c.Param("token"))
+	if err != nil {
+		switch err {
+		case objstore.ErrTokenExpired, objstore.ErrTokenConsumed:
+			c.String(http.StatusGone, "link expired")
+		case objstore.ErrTokenInvalid:
+			c.String(http.StatusForbidden, "forbidden")
+		case ErrCOSNotConfigured:
+			c.String(http.StatusServiceUnavailable, "cos not configured")
+		default:
+			c.String(http.StatusInternalServerError, "internal error")
+		}
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	c.Redirect(http.StatusFound, u)
+}
+
 func (h *publicHandler) verifyTurnstile(c *gin.Context, jsonToken string) bool {
 	tok := jsonToken
 	if tok == "" {

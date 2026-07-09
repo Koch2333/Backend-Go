@@ -211,6 +211,9 @@ function fmtDate(s?: string) {
 
       <section v-if="form.coserBinding" class="binding-section">
         <div class="m3-title-small text-on-surface">CN 绑定</div>
+        <div v-if="form.coserBinding.photoUrl" class="binding-photo">
+          <img :src="form.coserBinding.photoUrl" alt="" />
+        </div>
         <div class="binding-grid m3-body-medium">
           <span class="text-on-surface-variant">CN</span>
           <span class="text-on-surface">{{ form.coserBinding.cn }}</span>
@@ -267,6 +270,20 @@ md-outlined-select { width: 100%; }
   padding: 16px;
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: 12px;
+}
+.binding-photo {
+  width: 160px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 8px;
+  background: var(--md-sys-color-surface-container-highest);
+}
+.binding-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .binding-grid {
   display: grid;

@@ -15,6 +15,7 @@ export interface BadgeCoserBinding {
   badgeId: string
   cn: string
   photoObjectKey: string
+  photoUrl?: string
   deviceId?: string
   tagUid?: string
   writtenAt?: string

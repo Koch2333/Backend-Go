@@ -75,6 +75,28 @@ interface Badge {
 }
 ```
 
+### BadgeCoserBinding
+
+```ts
+interface BadgeCoserBinding {
+  badgeId: string
+  cn: string
+  photoObjectKey: string
+  photoUrl?: string
+  deviceId?: string
+  tagUid?: string
+  writtenAt?: string
+  createdAt?: string
+  updatedAt?: string
+}
+```
+
+说明：
+
+- `photoObjectKey` 是 COS 对象 key，只用于保存和排查，不要直接拼接成 COS URL。
+- `photoUrl` 是后端生成的一次性同域访问 URL，前端展示图片时直接作为 `<img src>` 使用。
+- `photoUrl` 形如 `/api/roundnfc/cos-objects/{token}`，访问后后端会消费 token 并 `302` 到短时 COS signed GET URL。
+
 ### BadgeStyleTemplate
 
 ```ts
@@ -111,6 +133,7 @@ GET /api/roundnfc/badges/{id}
 说明：
 
 - `imageUrl`、`styleImageOriginalUrl` 可能是 `/api/roundnfc/objects/{token}` 一次性对象链接。
+- `coserBinding.photoUrl` 可能是 `/api/roundnfc/cos-objects/{token}` 一次性 302 链接。
 - 一次性对象链接会过期，前端应按需重新获取徽章信息。
 
 ### 提交返图申请
@@ -210,6 +233,21 @@ GET /api/roundnfc/objects/{token}
 - 成功后返回 blob，前端可用 `URL.createObjectURL()` 显示。
 - 链接是一次性消费，过期或已消费返回 `410`。
 - 无效 token 返回 `403`，对象不存在返回 `404`。
+
+### 获取 COS 一次性跳转对象
+
+```http
+GET /api/roundnfc/cos-objects/{token}
+```
+
+响应：`302 Found`，`Location` 为短时 COS signed GET URL。
+
+说明：
+
+- 前端不需要知道 COS bucket、region、域名或签名算法。
+- 该 URL 主要出现在 `Badge.coserBinding.photoUrl` 中，前端可直接作为 `<img src>`。
+- token 一次性消费，过期或已消费返回 `410`。
+- 无效 token 返回 `403`，COS 未配置返回 `503`。
 
 ## 管理后台鉴权接口
 
@@ -776,6 +814,13 @@ POST /api/roundnfc/admin/uploads/presign
 - 空、`nfc-write`、`nfc-writes`、`download`、`user-download`：只允许 JPEG，生成 `roundnfc/nfc-writes/{badgeId}/...jpg`
 - `coser-photo`、`cn-photo`、`badge-coser`：允许 JPEG、PNG、WebP，生成 `roundnfc/coser-photos/{badgeId}/...`
 
+COS 图片读取规则：
+
+- 写入或绑定时仍保存 `objectKey` 到 `photoObjectKey`。
+- Web 前端不要直接请求 `photoObjectKey`，也不要拼 COS URL。
+- 后续调用徽章列表或详情接口时，后端会在 `coserBinding.photoUrl` 里返回一次性同域 URL。
+- 前端直接使用 `coserBinding.photoUrl`；浏览器请求后端 URL，后端消费 token 并 `302` 到短时 COS signed GET URL。
+
 ### 创建 NFC 写卡记录
 
 ```http
@@ -934,6 +979,7 @@ DELETE /api/roundnfc/admin/app-tokens/{id}
 
 ## 常见状态码
 
+- `302`：COS 一次性对象 URL 校验通过，跳转到短时 COS signed GET URL
 - `200`：成功
 - `400`：请求体或参数非法
 - `401`：缺少或无效 JWT

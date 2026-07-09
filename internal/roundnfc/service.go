@@ -189,12 +189,31 @@ func (s *Service) SignObject(ctx context.Context, key string) (string, error) {
 	return s.objects.SignOneShot(ctx, key, s.cfg.ObjectTTL)
 }
 
+func (s *Service) SignCOSObject(ctx context.Context, key string) (string, error) {
+	return s.objects.SignOneShot(ctx, "cos:"+key, s.cfg.ObjectTTL)
+}
+
 func (s *Service) ResolveObject(ctx context.Context, token string) (io.ReadCloser, objstore.ObjectMeta, error) {
 	key, err := s.objects.ResolveOneShot(ctx, token)
 	if err != nil {
 		return nil, objstore.ObjectMeta{}, err
 	}
 	return s.objects.Get(ctx, key)
+}
+
+func (s *Service) ResolveCOSObjectURL(ctx context.Context, token string) (string, error) {
+	key, err := s.objects.ResolveOneShot(ctx, token)
+	if err != nil {
+		return "", err
+	}
+	if !strings.HasPrefix(key, "cos:") {
+		return "", objstore.ErrTokenInvalid
+	}
+	key = strings.TrimPrefix(key, "cos:")
+	if key == "" || isAbsoluteURL(key) {
+		return "", objstore.ErrTokenInvalid
+	}
+	return s.presignCOSGet(key, cosDownloadPresignTTL)
 }
 
 // PublicBadge 将内部 imageUrl（可能是 object key）转换为一次性下载 URL。
@@ -216,6 +235,15 @@ func (s *Service) PublicBadge(ctx context.Context, b *Badge, urlPrefix string) B
 				out.StyleImageOriginalURL = strings.TrimRight(urlPrefix, "/") + "/objects/" + token
 			}
 		}
+	}
+	if out.CoserBinding != nil && out.CoserBinding.PhotoObjectKey != "" && !isAbsoluteURL(out.CoserBinding.PhotoObjectKey) {
+		binding := *out.CoserBinding
+		if strings.HasPrefix(binding.PhotoObjectKey, "roundnfc/") {
+			if token, err := s.SignCOSObject(ctx, binding.PhotoObjectKey); err == nil {
+				binding.PhotoURL = strings.TrimRight(urlPrefix, "/") + "/cos-objects/" + token
+			}
+		}
+		out.CoserBinding = &binding
 	}
 	return out
 }
