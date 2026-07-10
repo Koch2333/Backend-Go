@@ -47,6 +47,18 @@ type BadgeCoserBinding struct {
 	UpdatedAt      time.Time `json:"updatedAt,omitempty"`
 }
 
+type SocialLink struct {
+	Key       string    `json:"key"`
+	Label     string    `json:"label"`
+	Icon      string    `json:"icon,omitempty"`
+	Value     string    `json:"value,omitempty"`
+	URL       string    `json:"url,omitempty"`
+	Enabled   bool      `json:"enabled"`
+	SortOrder int       `json:"sortOrder"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
+}
+
 const (
 	StatusNew      = "new"
 	StatusHandled  = "handled"

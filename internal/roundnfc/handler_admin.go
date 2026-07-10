@@ -252,6 +252,59 @@ func (h *adminHandler) DeleteStyleTemplate(c *gin.Context) {
 	respondData(c, gin.H{"ok": true})
 }
 
+func (h *adminHandler) ListSocialLinks(c *gin.Context) {
+	items, err := h.svc.store.ListSocialLinks(c.Request.Context(), false)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondData(c, gin.H{"items": items})
+}
+
+type socialLinksPayload struct {
+	Items []SocialLink `json:"items"`
+}
+
+func (h *adminHandler) ReplaceSocialLinks(c *gin.Context) {
+	var p socialLinksPayload
+	if err := c.ShouldBindJSON(&p); err != nil {
+		respondError(c, http.StatusBadRequest, "invalid body")
+		return
+	}
+	seen := make(map[string]struct{}, len(p.Items))
+	items := make([]SocialLink, 0, len(p.Items))
+	for _, item := range p.Items {
+		item.Key = strings.ToLower(strings.TrimSpace(item.Key))
+		item.Label = strings.TrimSpace(item.Label)
+		item.Icon = strings.TrimSpace(item.Icon)
+		item.Value = strings.TrimSpace(item.Value)
+		item.URL = strings.TrimSpace(item.URL)
+		if item.Key == "" || item.Label == "" {
+			respondError(c, http.StatusBadRequest, "key and label required")
+			return
+		}
+		if _, ok := seen[item.Key]; ok {
+			respondError(c, http.StatusBadRequest, "duplicate key")
+			return
+		}
+		seen[item.Key] = struct{}{}
+		if item.URL != "" {
+			u, err := url.ParseRequestURI(item.URL)
+			if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+				respondError(c, http.StatusBadRequest, "invalid url")
+				return
+			}
+		}
+		items = append(items, item)
+	}
+	if err := h.svc.store.ReplaceSocialLinks(c.Request.Context(), items); err != nil {
+		respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	log.Printf("[roundnfc/admin] replace social links count=%d ip=%s", len(items), c.ClientIP())
+	respondData(c, gin.H{"items": items})
+}
+
 func jsonMarshalRaw(v any) ([]byte, error) {
 	if v == nil {
 		return []byte("{}"), nil

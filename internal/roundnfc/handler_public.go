@@ -37,6 +37,15 @@ func (h *publicHandler) GetBadge(c *gin.Context) {
 	respondData(c, h.svc.PublicBadge(c.Request.Context(), b, h.apiPrefix))
 }
 
+func (h *publicHandler) ListSocialLinks(c *gin.Context) {
+	items, err := h.svc.store.ListSocialLinks(c.Request.Context(), true)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal error")
+		return
+	}
+	respondData(c, gin.H{"items": items})
+}
+
 type photoRequestPayload struct {
 	BadgeID        string   `json:"badgeId"`
 	Name           string   `json:"name"`

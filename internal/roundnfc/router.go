@@ -27,6 +27,7 @@ func AttachTo(engine *gin.Engine, prefix string) error {
 
 	// public
 	g.GET("/badges/:id", pub.GetBadge)
+	g.GET("/social-links", pub.ListSocialLinks)
 	g.POST("/badges/:id/photo-requests", pub.CreatePhotoRequest)
 	g.POST("/badges/:id/autograph-requests", pub.CreateAutographRequest)
 	g.POST("/uploads", pub.UploadAttachment)
@@ -51,6 +52,8 @@ func AttachTo(engine *gin.Engine, prefix string) error {
 	authed.PUT("/style-templates/:key", adm.UpsertStyleTemplate)
 	authed.POST("/style-templates/:key/image", adm.UploadStyleTemplateImage)
 	authed.DELETE("/style-templates/:key", adm.DeleteStyleTemplate)
+	authed.GET("/social-links", adm.ListSocialLinks)
+	authed.PUT("/social-links", adm.ReplaceSocialLinks)
 	authed.POST("/uploads/presign", adm.PresignUpload)
 	authed.POST("/nfc-writes", adm.CreateNFCWrite)
 	authed.GET("/photo-requests", adm.ListPhotoRequests)

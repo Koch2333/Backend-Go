@@ -127,6 +127,17 @@ CREATE TABLE IF NOT EXISTS badge_coser_bindings (
   created_at       DATETIME NOT NULL,
   updated_at       DATETIME NOT NULL
 );
+CREATE TABLE IF NOT EXISTS social_links (
+  key        TEXT PRIMARY KEY,
+  label      TEXT NOT NULL DEFAULT '',
+  icon       TEXT NOT NULL DEFAULT '',
+  value      TEXT NOT NULL DEFAULT '',
+  url        TEXT NOT NULL DEFAULT '',
+  enabled    INTEGER NOT NULL DEFAULT 0,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL
+);
 `
 	if _, err := s.db.Exec(ddl); err != nil {
 		return err
@@ -138,6 +149,9 @@ CREATE TABLE IF NOT EXISTS badge_coser_bindings (
 		return err
 	}
 	if err := s.seedDefaultStyleTemplates(); err != nil {
+		return err
+	}
+	if err := s.seedDefaultSocialLinks(); err != nil {
 		return err
 	}
 	return s.migrateAuth()
@@ -412,6 +426,84 @@ func normalizeJSON(raw json.RawMessage) string {
 		return "{}"
 	}
 	return string(b)
+}
+
+// ----- Social Links -----
+
+func (s *Store) seedDefaultSocialLinks() error {
+	defaults := []SocialLink{
+		{Key: "qq", Label: "QQ", Icon: "qq", SortOrder: 10},
+		{Key: "wechat", Label: "微信", Icon: "wechat", SortOrder: 20},
+		{Key: "weibo", Label: "微博", Icon: "weibo", SortOrder: 30},
+		{Key: "bilibili", Label: "B站", Icon: "play-circle-o", SortOrder: 40},
+		{Key: "xiaohongshu", Label: "小红书", Icon: "shop-o", SortOrder: 50},
+	}
+	now := time.Now().UTC()
+	for _, item := range defaults {
+		if _, err := s.db.Exec(`
+INSERT INTO social_links(key,label,icon,value,url,enabled,sort_order,created_at,updated_at)
+VALUES(?,?,?,?,?,?,?,?,?)
+ON CONFLICT(key) DO NOTHING`, item.Key, item.Label, item.Icon, "", "", 0, item.SortOrder, now, now); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Store) ListSocialLinks(ctx context.Context, enabledOnly bool) ([]SocialLink, error) {
+	query := `SELECT key,label,icon,value,url,enabled,sort_order,created_at,updated_at FROM social_links`
+	if enabledOnly {
+		query += ` WHERE enabled=1`
+	}
+	query += ` ORDER BY sort_order,key`
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SocialLink
+	for rows.Next() {
+		var item SocialLink
+		var enabled int
+		if err := rows.Scan(&item.Key, &item.Label, &item.Icon, &item.Value, &item.URL, &enabled,
+			&item.SortOrder, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		item.Enabled = enabled == 1
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) ReplaceSocialLinks(ctx context.Context, items []SocialLink) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	now := time.Now().UTC()
+	for _, item := range items {
+		enabled := 0
+		if item.Enabled {
+			enabled = 1
+		}
+		_, err = tx.ExecContext(ctx, `
+INSERT INTO social_links(key,label,icon,value,url,enabled,sort_order,created_at,updated_at)
+VALUES(?,?,?,?,?,?,?,?,?)
+ON CONFLICT(key) DO UPDATE SET
+  label=excluded.label,
+  icon=excluded.icon,
+  value=excluded.value,
+  url=excluded.url,
+  enabled=excluded.enabled,
+  sort_order=excluded.sort_order,
+  updated_at=excluded.updated_at`, item.Key, item.Label, item.Icon, item.Value, item.URL, enabled,
+			item.SortOrder, now, now)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // ----- Coser Bindings -----

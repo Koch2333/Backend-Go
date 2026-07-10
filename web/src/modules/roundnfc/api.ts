@@ -174,6 +174,26 @@ export async function uploadBadgeStyleTemplateImage(key: string, file: File) {
   return M.unwrap<{ key: string; item: BadgeStyleTemplate }>(resp)
 }
 
+export interface SocialLink {
+  key: string
+  label: string
+  icon?: string
+  value?: string
+  url?: string
+  enabled: boolean
+  sortOrder: number
+}
+
+export async function listSocialLinks() {
+  const resp = await M.http().get('/admin/social-links')
+  return M.unwrap<{ items: SocialLink[] }>(resp)
+}
+
+export async function saveSocialLinks(items: SocialLink[]) {
+  const resp = await M.http().put('/admin/social-links', { items })
+  return M.unwrap<{ items: SocialLink[] }>(resp)
+}
+
 export interface RequestListParams {
   badgeId?: string
   status?: RequestStatus
