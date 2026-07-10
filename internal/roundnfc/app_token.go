@@ -38,6 +38,15 @@ func appTokenPrefix(token string) string {
 	return token[:12]
 }
 
+func normalizeAppTokenPurpose(purpose string) string {
+	switch strings.ToLower(strings.TrimSpace(purpose)) {
+	case "frontend", "web":
+		return "frontend"
+	default:
+		return "app"
+	}
+}
+
 func verifyStoredAppToken(ctx context.Context, svc *Service, token string) (bool, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {

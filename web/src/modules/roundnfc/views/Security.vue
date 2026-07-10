@@ -137,6 +137,7 @@ const appTokens = ref<AppToken[]>([])
 const appTokenWorking = ref(false)
 const appTokenDialog = ref<HTMLDialogElement & { show: () => void; close: () => void } | null>(null)
 const newAppTokenName = ref('')
+const newAppTokenPurpose = ref<'frontend' | 'app'>('app')
 const createdAppToken = ref('')
 const pairingConfig = ref<AppPairingConfig | null>(null)
 const pairingQR = ref('')
@@ -155,12 +156,15 @@ async function addAppToken() {
   if (!name) return
   appTokenWorking.value = true
   try {
-    const r = await createAppToken(name)
+    const purpose = newAppTokenPurpose.value
+    const r = await createAppToken(name, purpose)
     createdAppToken.value = r.token
     pairingConfig.value = r.pairing
-    pairingQR.value = await toDataURL(JSON.stringify(r.pairing), { width: 240, margin: 2 })
+    pairingQR.value = purpose === 'app'
+      ? await toDataURL(JSON.stringify(r.pairing), { width: 240, margin: 2 })
+      : ''
     newAppTokenName.value = ''
-    showSuccessToast('Android App 配对码已创建')
+    showSuccessToast(purpose === 'app' ? 'App 配对码已创建' : '前端 secret 已创建')
     await loadAppTokens()
   } catch (e) {
     showFailToast(extractMessage(e))
@@ -186,6 +190,7 @@ function closeAppTokenDialog() {
   createdAppToken.value = ''
   pairingConfig.value = null
   pairingQR.value = ''
+  newAppTokenPurpose.value = 'app'
 }
 
 async function toggleAppToken(token: AppToken) {
@@ -229,31 +234,38 @@ async function handleDeleteAppToken(id: string) {
     <section class="m3-card p-6">
       <div class="section-head">
         <div>
-          <h2 class="m3-title-large text-on-surface">Android App 配对</h2>
+          <h2 class="m3-title-large text-on-surface">前端 / App Secret</h2>
           <p class="m3-body-medium text-on-surface-variant mt-1">
-            生成写卡 App 使用的独立密钥，扫码后自动连接当前后端。
+            生成可撤销的访问 secret；前端可直接复制，App 可扫码完成配对。
           </p>
         </div>
         <md-filled-button @click="appTokenDialog?.show()">
-          <md-icon slot="icon">qr_code_2</md-icon>
-          配对
+          <md-icon slot="icon">add</md-icon>
+          新建 secret
         </md-filled-button>
       </div>
 
       <div v-if="appTokens.length === 0" class="token-empty m3-body-medium text-on-surface-variant">
-        还没有 Android App 配对项。
+        还没有前端或 App secret。
       </div>
 
       <md-list v-else class="mt-2">
         <template v-for="(token, i) in appTokens" :key="token.id">
           <md-divider v-if="i > 0" />
           <md-list-item>
-            <md-icon slot="start" class="row-icon">phone_android</md-icon>
+            <md-icon slot="start" class="row-icon">
+              {{ token.purpose === 'frontend' ? 'language' : 'phone_android' }}
+            </md-icon>
             <div slot="headline" class="m3-title-medium">{{ token.name }}</div>
             <div slot="supporting-text" class="m3-body-medium">
               {{ token.tokenPrefix }}... · 创建于 {{ fmtDate(token.createdAt) }}
               <span v-if="token.lastUsedAt"> · 最近使用 {{ fmtDate(token.lastUsedAt) }}</span>
             </div>
+            <md-assist-chip
+              slot="end"
+              :label="token.purpose === 'frontend' ? '前端' : 'App'"
+              class="chip-muted"
+            />
             <md-assist-chip
               slot="end"
               :label="token.enabled ? '启用中' : '已停用'"
@@ -403,17 +415,41 @@ async function handleDeleteAppToken(id: string) {
     </md-dialog>
 
     <md-dialog ref="appTokenDialog">
-      <div slot="headline">创建 Android App 配对码</div>
+      <div slot="headline">创建前端 / App secret</div>
       <form slot="content" id="add-app-token-form" method="dialog" class="dialog-form">
+        <div v-if="!createdAppToken" class="purpose-options" role="radiogroup" aria-label="secret 用途">
+          <label class="purpose-option" :class="{ selected: newAppTokenPurpose === 'app' }">
+            <input v-model="newAppTokenPurpose" type="radio" value="app" />
+            <md-icon>qr_code_2</md-icon>
+            <span>
+              <strong>App 二维码配对</strong>
+              <small>生成二维码，写卡 App 扫码保存配置。</small>
+            </span>
+          </label>
+          <label class="purpose-option" :class="{ selected: newAppTokenPurpose === 'frontend' }">
+            <input v-model="newAppTokenPurpose" type="radio" value="frontend" />
+            <md-icon>language</md-icon>
+            <span>
+              <strong>前端 secret</strong>
+              <small>复制 secret 给前端页面，用于申请一次性读图 URL。</small>
+            </span>
+          </label>
+        </div>
         <md-outlined-text-field
-          label="名称（如 写卡手机、备用机）"
+          label="名称（如 写卡手机、活动前端）"
           :value="newAppTokenName"
           @input="(e: any) => (newAppTokenName = e.target.value)"
         />
         <div v-if="pairingQR" class="pairing-created">
           <img :src="pairingQR" alt="Android pairing QR" class="pairing-qr" />
           <p class="m3-body-medium text-on-surface">
-            完整令牌只显示这一次，请用 Android 写卡 App 扫码保存。
+            完整 secret 只显示这一次，请用 App 扫码保存。
+          </p>
+          <code class="token-value">{{ createdAppToken }}</code>
+        </div>
+        <div v-else-if="createdAppToken" class="pairing-created">
+          <p class="m3-body-medium text-on-surface">
+            完整 secret 只显示这一次，请立即复制并保存到前端配置。
           </p>
           <code class="token-value">{{ createdAppToken }}</code>
         </div>
@@ -422,11 +458,11 @@ async function handleDeleteAppToken(id: string) {
         <md-text-button :disabled="appTokenWorking" @click="closeAppTokenDialog">
           关闭
         </md-text-button>
-        <md-outlined-button v-if="pairingConfig" @click="copyPairingConfig">
+        <md-outlined-button v-if="pairingQR && pairingConfig" @click="copyPairingConfig">
           复制配对信息
         </md-outlined-button>
         <md-outlined-button v-if="createdAppToken" @click="copyAppToken">
-          复制令牌
+          复制 secret
         </md-outlined-button>
         <md-filled-button
           v-if="!pairingConfig"
@@ -489,6 +525,40 @@ async function handleDeleteAppToken(id: string) {
   display: grid;
   justify-items: center;
   gap: 12px;
+}
+.purpose-options {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.purpose-option {
+  display: grid;
+  grid-template-columns: auto 24px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--md-sys-color-on-surface);
+}
+.purpose-option.selected {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+.purpose-option input {
+  accent-color: var(--md-sys-color-primary);
+}
+.purpose-option span {
+  display: grid;
+  gap: 2px;
+}
+.purpose-option small {
+  color: var(--md-sys-color-on-surface-variant);
+}
+.purpose-option.selected small {
+  color: var(--md-sys-color-on-primary-container);
 }
 .pairing-qr {
   height: 240px;

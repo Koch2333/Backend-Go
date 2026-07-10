@@ -33,6 +33,7 @@ The QR code content is a JSON string. Example shape:
     "getBadge": "/api/roundnfc/app/badges/{id}",
     "upsertBadge": "/api/roundnfc/app/badges",
     "presignUpload": "/api/roundnfc/app/uploads/presign",
+    "presignCOSObject": "/api/roundnfc/app/cos-objects/presign",
     "createWrite": "/api/roundnfc/app/nfc-writes",
     "presignCoserPhoto": "/api/roundnfc/app/badges/{id}/coser-photo/presign",
     "upsertCoserBinding": "/api/roundnfc/app/badges/{id}/coser-binding",
@@ -275,7 +276,37 @@ Notes:
 GET /api/roundnfc/app/badges/{id}/coser-binding
 ```
 
-Returns the currently bound `cn` and `photoObjectKey`.
+Returns the currently bound `cn`, `photoObjectKey`, and `photoUrl` when signing succeeds. `photoUrl` is a same-origin one-shot URL. The client can use it directly as an image URL; the backend consumes the token and returns `302` to a short COS signed GET URL.
+
+### Presign COS Object Read
+
+Use this when a frontend or app only has the pairing token/secret and needs to read an image previously uploaded by Android.
+
+```http
+POST /api/roundnfc/app/cos-objects/presign
+Content-Type: application/json
+X-RoundNFC-App-Token: <token from QR>
+```
+
+Body:
+
+```json
+{
+  "objectKey": "roundnfc/coser-photos/badge-001/uuid.jpg"
+}
+```
+
+Response data:
+
+```json
+{
+  "url": "/api/roundnfc/cos-objects/one-shot-token",
+  "objectKey": "roundnfc/coser-photos/badge-001/uuid.jpg",
+  "expiresIn": 120
+}
+```
+
+Allowed keys are Android upload objects under `roundnfc/coser-photos/...` or `roundnfc/nfc-writes/...`. The returned `url` is one-shot and redirects with `302` to a short-lived COS signed GET URL.
 
 If badge does not exist, backend creates it with:
 

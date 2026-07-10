@@ -31,6 +31,12 @@ type UploadPresign struct {
 	ExpiresIn int               `json:"expiresIn"`
 }
 
+type COSObjectPresign struct {
+	URL       string `json:"url"`
+	ObjectKey string `json:"objectKey"`
+	ExpiresIn int    `json:"expiresIn"`
+}
+
 func (s *Service) PresignUpload(ctx context.Context, badgeID, fileName, contentType, purpose string) (UploadPresign, error) {
 	_ = ctx
 	key, err := buildUploadObjectKey(badgeID, fileName, contentType, purpose)
@@ -49,6 +55,35 @@ func (s *Service) PresignUpload(ctx context.Context, badgeID, fileName, contentT
 		Headers:   headers,
 		ExpiresIn: int(cosPresignTTL / time.Second),
 	}, nil
+}
+
+func (s *Service) PresignCOSObject(ctx context.Context, objectKey, urlPrefix string) (COSObjectPresign, error) {
+	key := strings.TrimSpace(objectKey)
+	if err := validateAppCOSObjectKey(key); err != nil {
+		return COSObjectPresign{}, err
+	}
+	token, err := s.SignCOSObject(ctx, key)
+	if err != nil {
+		return COSObjectPresign{}, err
+	}
+	return COSObjectPresign{
+		URL:       strings.TrimRight(urlPrefix, "/") + "/cos-objects/" + token,
+		ObjectKey: key,
+		ExpiresIn: int(s.cfg.ObjectTTL / time.Second),
+	}, nil
+}
+
+func validateAppCOSObjectKey(key string) error {
+	if key == "" {
+		return errors.New("objectKey required")
+	}
+	if isAbsoluteURL(key) || strings.HasPrefix(key, "/") || strings.Contains(key, "..") {
+		return errors.New("invalid objectKey")
+	}
+	if strings.HasPrefix(key, "roundnfc/coser-photos/") || strings.HasPrefix(key, "roundnfc/nfc-writes/") {
+		return nil
+	}
+	return errors.New("objectKey is not an app upload")
 }
 
 func shortSecretID(v string) string {

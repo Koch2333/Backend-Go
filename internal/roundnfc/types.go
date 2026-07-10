@@ -95,6 +95,7 @@ type NFCWrite struct {
 type AppToken struct {
 	ID          string     `json:"id"`
 	Name        string     `json:"name"`
+	Purpose     string     `json:"purpose"`
 	TokenPrefix string     `json:"tokenPrefix"`
 	Enabled     bool       `json:"enabled"`
 	LastUsedAt  *time.Time `json:"lastUsedAt,omitempty"`
@@ -106,6 +107,7 @@ type AppPairingConfig struct {
 	Protocol    string            `json:"protocol"`
 	Version     int               `json:"version"`
 	Name        string            `json:"name"`
+	Purpose     string            `json:"purpose,omitempty"`
 	ApiBase     string            `json:"apiBase"`
 	ApiPrefix   string            `json:"apiPrefix"`
 	TokenHeader string            `json:"tokenHeader"`

@@ -275,6 +275,7 @@ func (h *adminHandler) ListAppTokens(c *gin.Context) {
 type appTokenCreatePayload struct {
 	Name    string `json:"name"`
 	ApiBase string `json:"apiBase"`
+	Purpose string `json:"purpose"`
 }
 
 func (h *adminHandler) CreateAppToken(c *gin.Context) {
@@ -288,6 +289,7 @@ func (h *adminHandler) CreateAppToken(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, "name required")
 		return
 	}
+	purpose := normalizeAppTokenPurpose(p.Purpose)
 	apiBase, err := normalizePairingAPIBase(p.ApiBase)
 	if err != nil {
 		respondError(c, http.StatusBadRequest, "invalid apiBase")
@@ -304,6 +306,7 @@ func (h *adminHandler) CreateAppToken(c *gin.Context) {
 	item := &AppToken{
 		ID:          uuid.NewString(),
 		Name:        name,
+		Purpose:     purpose,
 		TokenPrefix: appTokenPrefix(plain),
 		Enabled:     true,
 	}
@@ -311,9 +314,9 @@ func (h *adminHandler) CreateAppToken(c *gin.Context) {
 		respondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	pairing := h.appPairingConfig(name, apiBase, plain)
-	log.Printf("[roundnfc/admin] create app token id=%q name=%q prefix=%q apiBase=%q ip=%s",
-		item.ID, item.Name, item.TokenPrefix, apiBase, c.ClientIP())
+	pairing := h.appPairingConfig(name, purpose, apiBase, plain)
+	log.Printf("[roundnfc/admin] create app token id=%q name=%q purpose=%q prefix=%q apiBase=%q ip=%s",
+		item.ID, item.Name, item.Purpose, item.TokenPrefix, apiBase, c.ClientIP())
 	respondData(c, gin.H{"item": item, "token": plain, "pairing": pairing})
 }
 
@@ -352,7 +355,7 @@ func (h *adminHandler) DeleteAppToken(c *gin.Context) {
 	respondData(c, gin.H{"ok": true})
 }
 
-func (h *adminHandler) appPairingConfig(name, apiBase, token string) AppPairingConfig {
+func (h *adminHandler) appPairingConfig(name, purpose, apiBase, token string) AppPairingConfig {
 	prefix := h.apiPrefix
 	if prefix == "" {
 		prefix = "/api/roundnfc"
@@ -361,6 +364,7 @@ func (h *adminHandler) appPairingConfig(name, apiBase, token string) AppPairingC
 		Protocol:    "roundnfc-writer",
 		Version:     1,
 		Name:        name,
+		Purpose:     normalizeAppTokenPurpose(purpose),
 		ApiBase:     apiBase,
 		ApiPrefix:   prefix,
 		TokenHeader: appTokenHeader,
@@ -371,6 +375,7 @@ func (h *adminHandler) appPairingConfig(name, apiBase, token string) AppPairingC
 			"getBadge":           prefix + "/app/badges/{id}",
 			"upsertBadge":        prefix + "/app/badges",
 			"presignUpload":      prefix + "/app/uploads/presign",
+			"presignCOSObject":   prefix + "/app/cos-objects/presign",
 			"createWrite":        prefix + "/app/nfc-writes",
 			"presignCoserPhoto":  prefix + "/app/badges/{id}/coser-photo/presign",
 			"upsertCoserBinding": prefix + "/app/badges/{id}/coser-binding",

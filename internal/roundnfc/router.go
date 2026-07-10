@@ -74,6 +74,7 @@ func AttachTo(engine *gin.Engine, prefix string) error {
 	app.GET("/badges/:id/coser-binding", apph.GetCoserBinding)
 	app.POST("/badges/:id/coser-binding", apph.UpsertCoserBinding)
 	app.POST("/uploads/presign", adm.PresignUpload)
+	app.POST("/cos-objects/presign", apph.PresignCOSObject)
 	app.POST("/nfc-writes", adm.CreateNFCWrite)
 
 	return nil

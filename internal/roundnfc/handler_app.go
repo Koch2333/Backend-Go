@@ -114,6 +114,28 @@ func (h *appHandler) PresignCoserPhoto(c *gin.Context) {
 	respondData(c, out)
 }
 
+type cosObjectPresignPayload struct {
+	ObjectKey string `json:"objectKey"`
+}
+
+func (h *appHandler) PresignCOSObject(c *gin.Context) {
+	var p cosObjectPresignPayload
+	if err := c.ShouldBindJSON(&p); err != nil {
+		respondError(c, http.StatusBadRequest, "invalid body")
+		return
+	}
+	out, err := h.svc.PresignCOSObject(c.Request.Context(), p.ObjectKey, h.apiPrefix)
+	if err != nil {
+		log.Printf("[roundnfc/app] presign cos object failed objectKey=%q ip=%s err=%v",
+			p.ObjectKey, c.ClientIP(), err)
+		respondError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	log.Printf("[roundnfc/app] presign cos object objectKey=%q expiresIn=%d ip=%s",
+		out.ObjectKey, out.ExpiresIn, c.ClientIP())
+	respondData(c, out)
+}
+
 type coserBindingPayload struct {
 	CN             string `json:"cn"`
 	PhotoObjectKey string `json:"photoObjectKey"`
@@ -168,6 +190,9 @@ func (h *appHandler) UpsertCoserBinding(c *gin.Context) {
 		respondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if out, err := h.svc.PresignCOSObject(c.Request.Context(), b.PhotoObjectKey, h.apiPrefix); err == nil {
+		b.PhotoURL = out.URL
+	}
 	log.Printf("[roundnfc/app] upsert coser binding badgeId=%q cn=%q photoObjectKey=%q deviceId=%q tagUid=%q ip=%s",
 		b.BadgeID, b.CN, b.PhotoObjectKey, b.DeviceID, b.TagUID, c.ClientIP())
 	respondData(c, b)
@@ -182,6 +207,11 @@ func (h *appHandler) GetCoserBinding(c *gin.Context) {
 		}
 		respondError(c, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if b.PhotoObjectKey != "" {
+		if out, err := h.svc.PresignCOSObject(c.Request.Context(), b.PhotoObjectKey, h.apiPrefix); err == nil {
+			b.PhotoURL = out.URL
+		}
 	}
 	respondData(c, b)
 }

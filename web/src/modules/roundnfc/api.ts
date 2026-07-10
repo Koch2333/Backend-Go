@@ -202,6 +202,7 @@ export async function setAutographStatus(id: string, status: RequestStatus) {
 export interface AppToken {
   id: string
   name: string
+  purpose?: 'frontend' | 'app'
   tokenPrefix: string
   enabled: boolean
   lastUsedAt?: string
@@ -213,6 +214,7 @@ export interface AppPairingConfig {
   protocol: 'roundnfc-writer'
   version: number
   name: string
+  purpose?: 'frontend' | 'app'
   apiBase: string
   apiPrefix: string
   tokenHeader: string
@@ -221,17 +223,33 @@ export interface AppPairingConfig {
   createdAt: string
 }
 
+export interface COSObjectPresign {
+  url: string
+  objectKey: string
+  expiresIn: number
+}
+
 export async function listAppTokens() {
   const resp = await M.http().get('/admin/app-tokens')
   return M.unwrap<{ items: AppToken[] }>(resp)
 }
 
-export async function createAppToken(name: string) {
+export async function createAppToken(name: string, purpose: 'frontend' | 'app' = 'app') {
   const resp = await M.http().post('/admin/app-tokens', {
     name,
+    purpose,
     apiBase: getApiBase('roundnfc') || window.location.origin,
   })
   return M.unwrap<{ item: AppToken; token: string; pairing: AppPairingConfig }>(resp)
+}
+
+export async function presignAppCOSObject(objectKey: string, secret: string) {
+  const resp = await M.http().post(
+    '/app/cos-objects/presign',
+    { objectKey },
+    { headers: { 'X-RoundNFC-App-Token': secret } },
+  )
+  return M.unwrap<COSObjectPresign>(resp)
 }
 
 export async function setAppTokenEnabled(id: string, enabled: boolean) {

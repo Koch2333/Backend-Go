@@ -98,6 +98,7 @@ CREATE INDEX IF NOT EXISTS idx_nfc_writes_badge_written ON nfc_writes(badge_id, 
 CREATE TABLE IF NOT EXISTS app_tokens (
   id           TEXT PRIMARY KEY,
   name         TEXT NOT NULL,
+  purpose      TEXT NOT NULL DEFAULT 'app',
   token_hash   TEXT NOT NULL UNIQUE,
   token_prefix TEXT NOT NULL DEFAULT '',
   enabled      INTEGER NOT NULL DEFAULT 1,
@@ -131,6 +132,9 @@ CREATE TABLE IF NOT EXISTS badge_coser_bindings (
 		return err
 	}
 	if err := s.ensureColumn("badge_style_templates", "image_url", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.ensureColumn("app_tokens", "purpose", "TEXT NOT NULL DEFAULT 'app'"); err != nil {
 		return err
 	}
 	if err := s.seedDefaultStyleTemplates(); err != nil {
@@ -461,7 +465,7 @@ func nullableTime(t time.Time) any {
 
 func (s *Store) ListAppTokens(ctx context.Context) ([]AppToken, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT id,name,token_prefix,enabled,last_used_at,created_at,updated_at
+SELECT id,name,purpose,token_prefix,enabled,last_used_at,created_at,updated_at
 FROM app_tokens ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
@@ -472,7 +476,7 @@ FROM app_tokens ORDER BY created_at DESC`)
 		var t AppToken
 		var enabled int
 		var last sql.NullTime
-		if err := rows.Scan(&t.ID, &t.Name, &t.TokenPrefix, &enabled, &last, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.Name, &t.Purpose, &t.TokenPrefix, &enabled, &last, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, err
 		}
 		t.Enabled = enabled == 1
@@ -488,14 +492,15 @@ func (s *Store) InsertAppToken(ctx context.Context, t *AppToken, tokenHash strin
 	now := time.Now().UTC()
 	t.CreatedAt = now
 	t.UpdatedAt = now
+	t.Purpose = normalizeAppTokenPurpose(t.Purpose)
 	enabled := 0
 	if t.Enabled {
 		enabled = 1
 	}
 	_, err := s.db.ExecContext(ctx, `
-INSERT INTO app_tokens(id,name,token_hash,token_prefix,enabled,created_at,updated_at)
-VALUES(?,?,?,?,?,?,?)`,
-		t.ID, t.Name, tokenHash, t.TokenPrefix, enabled, t.CreatedAt, t.UpdatedAt)
+INSERT INTO app_tokens(id,name,purpose,token_hash,token_prefix,enabled,created_at,updated_at)
+VALUES(?,?,?,?,?,?,?,?)`,
+		t.ID, t.Name, t.Purpose, tokenHash, t.TokenPrefix, enabled, t.CreatedAt, t.UpdatedAt)
 	return err
 }
 

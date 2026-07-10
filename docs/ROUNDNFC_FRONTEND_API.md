@@ -821,6 +821,34 @@ COS 图片读取规则：
 - 后续调用徽章列表或详情接口时，后端会在 `coserBinding.photoUrl` 里返回一次性同域 URL。
 - 前端直接使用 `coserBinding.photoUrl`；浏览器请求后端 URL，后端消费 token 并 `302` 到短时 COS signed GET URL。
 
+如果某个前端页面不走后台 JWT、只持有 Android/App 配对 secret，也可以用这个 secret 为 Android 上传的对象申请一次性读图 URL：
+
+```http
+POST /api/roundnfc/app/cos-objects/presign
+X-RoundNFC-App-Token: <pairing token>
+Content-Type: application/json
+```
+
+请求：
+
+```json
+{
+  "objectKey": "roundnfc/coser-photos/badge-001/uuid.jpg"
+}
+```
+
+响应 `data`：
+
+```json
+{
+  "url": "/api/roundnfc/cos-objects/one-shot-token",
+  "objectKey": "roundnfc/coser-photos/badge-001/uuid.jpg",
+  "expiresIn": 120
+}
+```
+
+允许的对象 key 是 `roundnfc/coser-photos/...` 和 `roundnfc/nfc-writes/...`。返回的 `url` 消费一次后会 `302` 到短时 COS signed GET URL。
+
 ### 创建 NFC 写卡记录
 
 ```http
@@ -926,6 +954,7 @@ POST /api/roundnfc/admin/app-tokens
       "getBadge": "/api/roundnfc/app/badges/{id}",
       "upsertBadge": "/api/roundnfc/app/badges",
       "presignUpload": "/api/roundnfc/app/uploads/presign",
+      "presignCOSObject": "/api/roundnfc/app/cos-objects/presign",
       "createWrite": "/api/roundnfc/app/nfc-writes",
       "presignCoserPhoto": "/api/roundnfc/app/badges/{id}/coser-photo/presign",
       "upsertCoserBinding": "/api/roundnfc/app/badges/{id}/coser-binding",
