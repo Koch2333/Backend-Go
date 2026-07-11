@@ -1,0 +1,34 @@
+services:
+  backend-go:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-none}
+        BUILD: ${BUILD:-local}
+    image: backend-go:${VERSION:-dev}
+    container_name: backend-go
+    restart: unless-stopped
+    environment:
+      GIN_MODE: release
+      CONFIG_DIR: /app
+      HTTP_ADDR: 0.0.0.0:8080
+      HTTP_ADMIN_ADDR: 0.0.0.0:8081
+      HTTP_PUBLIC_API_BASE: ${HTTP_PUBLIC_API_BASE:-https://api.example.com}
+      HTTP_CORS_ORIGINS: ${HTTP_CORS_ORIGINS:-https://admin.example.com}
+      HTTP_CORS_CREDENTIALS: "true"
+      TZ: Asia/Shanghai
+    volumes:
+      - ./config:/app/config
+      - ./databases:/app/databases
+      - ./storage:/app/storage
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8081:8081"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
