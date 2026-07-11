@@ -7,7 +7,7 @@ services:
         VERSION: ${VERSION:-dev}
         COMMIT: ${COMMIT:-none}
         BUILD: ${BUILD:-local}
-    image: backend-go:${VERSION:-dev}
+    image: ${BACKEND_IMAGE:-backend-go}:${VERSION:-dev}
     container_name: backend-go
     restart: unless-stopped
     environment:
