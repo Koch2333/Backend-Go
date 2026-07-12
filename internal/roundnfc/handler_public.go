@@ -37,6 +37,18 @@ func (h *publicHandler) GetBadge(c *gin.Context) {
 	respondData(c, h.svc.PublicBadge(c.Request.Context(), b, h.apiPrefix))
 }
 
+func (h *publicHandler) ListStyleTemplates(c *gin.Context) {
+	items, err := h.svc.store.ListBadgeStyleTemplates(c.Request.Context(), true)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal error")
+		return
+	}
+	for i := range items {
+		items[i] = h.svc.PublicStyleTemplate(c.Request.Context(), items[i], h.apiPrefix)
+	}
+	respondData(c, gin.H{"items": items})
+}
+
 func (h *publicHandler) ListSocialLinks(c *gin.Context) {
 	items, err := h.svc.store.ListSocialLinks(c.Request.Context(), true)
 	if err != nil {

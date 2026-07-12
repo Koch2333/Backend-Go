@@ -27,6 +27,7 @@ func AttachTo(engine *gin.Engine, prefix string) error {
 
 	// public
 	g.GET("/badges/:id", pub.GetBadge)
+	g.GET("/style-templates", pub.ListStyleTemplates)
 	g.GET("/social-links", pub.ListSocialLinks)
 	g.POST("/badges/:id/photo-requests", pub.CreatePhotoRequest)
 	g.POST("/badges/:id/autograph-requests", pub.CreateAutographRequest)
